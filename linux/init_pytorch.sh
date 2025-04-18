@@ -68,23 +68,23 @@ conda activate "$ENV_PATH"
 
 # 检查 PyTorch 是否已安装
 if check_pytorch; then
-    echo "PyTorch 已正确安装，跳过安装步骤"
+    echo "✅ PyTorch 已正确安装，跳过安装步骤"
     exit 0
 fi
 
-echo "配置 conda 镜像源..."
+echo "🔧 配置 conda 镜像源..."
 configure_conda_channels
 
-echo "正在检测 CUDA 版本..."
+echo "🔍 正在检测 CUDA 版本..."
 cuda_version=$(get_cuda_version)
 
 if [ "$cuda_version" = "none" ]; then
-    echo "未检测到 CUDA，将安装 CPU 版本的 PyTorch"
+    echo "💻 未检测到 CUDA，将安装 CPU 版本的 PyTorch"
 else
-    echo "检测到 CUDA 版本: $cuda_version"
+    echo "🎯 检测到 CUDA 版本: $cuda_version"
 fi
 
-echo "开始安装 PyTorch..."
+echo "📦 开始安装 PyTorch..."
 install_pytorch "$cuda_version"
 
-echo "PyTorch 安装完成"
+echo "✨ PyTorch 安装完成"

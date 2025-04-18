@@ -151,7 +151,8 @@ install_requirements() {
     # 创建一个新数组来存储非 torch 相关的包
     filtered_install=()
     for package in "${to_install[@]}"; do
-        if [[ $package != *"torch"* && $package != *"torchvision"* && $package != *"torchaudio"* ]]; then
+        package_clean=$(echo "$package" | tr -d '[:space:]')
+        if [[ "$package_clean" != "torch" && "$package_clean" != "torchvision" && "$package_clean" != "torchaudio" ]]; then
             filtered_install+=("$package")
         else
             echo "� 移除 $package"
