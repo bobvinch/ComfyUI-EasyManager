@@ -44,17 +44,12 @@ git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
 ```bash
 # 克隆脚本
 git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
-# 进入ComfyUI-EasyManager目录下linux目录,一键安装及启动:
-cd ./ComfyUI-EasyManager/linux
-# 添加执行权限
-chmod +x install.sh
 # 一键启动
-./install.sh
+cd ./ComfyUI-EasyManager/linux && chmod +x install.sh && ./install.sh
 
 ```
 
 ### 仅启动
 ```bash
-chmod +x start.sh
-./start.sh
+chmod +x start.sh && ./start.sh
 ```
