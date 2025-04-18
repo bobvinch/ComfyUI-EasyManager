@@ -10,14 +10,29 @@ ENV_PATH="$ROOT_DIR/envs/comfyui"
 # 获取CUDA版本的函数 12.1, 12.4, 11.8, none
 get_cuda_version() {
     if command -v nvidia-smi &> /dev/null; then
-        cuda_version=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}')
-        # 只保留主版本号和次版本号
-        cuda_version=${cuda_version%.*}
-        echo "$cuda_version"
+        # 使用更精确的匹配方式获取CUDA版本
+        cuda_version=$(nvidia-smi | grep -oP "CUDA Version: \K[0-9]+\.[0-9]")
+        if [ -n "$cuda_version" ]; then
+            echo "$cuda_version"
+        else
+            echo "none"
+        fi
     else
         echo "none"
     fi
 }
+
+# 配置conda镜像源
+configure_conda_channels() {
+    conda config --remove-key channels
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch
+    conda config --set show_channel_urls yes
+}
+
 
 # 安装PyTorch的函数
 install_pytorch() {
@@ -44,12 +59,14 @@ install_pytorch() {
     esac
 }
 
-
+# 主程序
 # 初始化 conda
 source "$CONDA_PATH/etc/profile.d/conda.sh"
 conda init bash
 
-# 主程序
+echo "配置 conda 镜像源..."
+configure_conda_channels
+
 echo "正在检测 CUDA 版本..."
 cuda_version=$(get_cuda_version)
 
