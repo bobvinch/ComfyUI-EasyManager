@@ -96,17 +96,10 @@ if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
         HF_TOKEN="$TOKEN_VALUE"
         echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
     else
-        echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空"
+        echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空，你可能无法正常下载部分huggingface模型"
     fi
 else
     echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
-fi
-
-
-# 检查环境变量
-if [ -z "$HF_TOKEN" ]; then
-    echo "❌ 未设置 HF_TOKEN 环境变量"
-    exit 1
 fi
 
 # 检查 TOML 文件
