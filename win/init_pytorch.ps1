@@ -470,6 +470,7 @@ try {
 
     Write-Host "✅ PyTorch初始化完成！"
     Write-Host "🔧 环境路径: $envPath"
+
 }
 catch {
     Write-Host "❌ 错误：$($_.Exception.Message)" -ForegroundColor Red
