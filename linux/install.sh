@@ -12,21 +12,7 @@ CONDA_PATH="/root/miniconda3"
 ENV_PATH="$ROOT_DIR/envs/comfyui"
 
 
-## 部分模型下载需要的token
-HF_TOKEN=""
 
-chmod +x parse_toml.sh
-TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
-if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
-    if [ "$TOKEN_VALUE" != "" ]; then
-        HF_TOKEN="$TOKEN_VALUE"
-        echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
-    else
-        echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空"
-    fi
-else
-    echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
-fi
 
 
 echo "==========================="
@@ -100,6 +86,21 @@ fi
 echo "🚀 aria2c安装成功"
 
 
+## 部分模型下载需要的token
+HF_TOKEN=""
+
+chmod +x parse_toml.sh
+TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
+if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
+    if [ "$TOKEN_VALUE" != "" ]; then
+        HF_TOKEN="$TOKEN_VALUE"
+        echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
+    else
+        echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空"
+    fi
+else
+    echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
+fi
 
 
 # 检查环境变量

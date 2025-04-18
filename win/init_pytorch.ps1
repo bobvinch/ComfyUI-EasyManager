@@ -292,8 +292,18 @@ function Get-PyTorchVersion {
         # CUDA 版本映射逻辑
         switch ($cudaMajor) {
             12 {
-                Write-Host "📌 使用 CUDA 12.1 兼容版本"
-                return $versionMap['12.4']
+                if ($cudaMinor -ge 4) {
+                    Write-Host "📌 使用 CUDA 12.4 兼容版本"
+                    return $versionMap['12.4']
+                }
+                elseif ($cudaMinor -ge 1) {
+                    Write-Host "📌 使用 CUDA 12.1 兼容版本"
+                    return $versionMap['12.1']
+                }
+                else {
+                    Write-Host "📌 使用 CUDA 12.1 兼容版本（向下兼容）"
+                    return $versionMap['12.1']
+                }
             }
             11 {
                 if ($cudaMinor -ge 8) {
