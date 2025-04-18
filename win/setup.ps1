@@ -1,4 +1,4 @@
-
+﻿
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 # 设置错误处理
@@ -13,7 +13,22 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $HF_TOKEN = ""
 
 $configFile = Join-Path $ROOT_DIR "config.toml"
-$config = Convert-FromToml $configFile
+try {
+    if (Test-Path $configFile) {
+        $config = Convert-FromToml $configFile
+    } else {
+        Write-Host "ℹ️ 未找到配置文件，使用默认配置" -ForegroundColor Yellow
+        # 提供默认配置
+        $config = @{
+        # 默认配置项
+        }
+    }
+} catch {
+    Write-Warning "无法读取配置文件，使用默认配置"
+    $config = @{
+    # 默认配置项
+    }
+}
 # 配置pip镜像源
 if ($config.authorizations -and $config.authorizations.huggingface_token) {
     Write-Host "🔧 检测到配置的huggingface token，已经设置: $($config.authorizations.huggingface_token)" -ForegroundColor Cyan
@@ -282,34 +297,42 @@ try {
 
     # 使用公共函数解析TOML
     $modelsFile = Join-Path $ROOT_DIR "models.toml"
-    Write-Host "🔄 开始解析模型,$modelsFile" -ForegroundColor Cyan
-    $models = Convert-FromToml $modelsFile
-    if (-not $models) {
-        Write-Host "❌ 模型解析失败" -ForegroundColor Red
-        exit 1
-    }
-    foreach ($model in $models.models) {
-        Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
-        $targetDir = Join-Path $COMFY_DIR $model.dir
-        if (-not (Test-Path $targetDir)) {
-            New-Item -ItemType Directory -Path $targetDir -Force
+    Write-Host "开始解析模型配置: $modelsFile" -ForegroundColor Cyan
+
+    try {
+        if (Test-Path $modelsFile) {
+            $models = Convert-FromToml $modelsFile
+        } else {
+            Write-Host "未找到模型配置文件，使用默认空配置" -ForegroundColor Yellow
         }
-        # 修改这部分代码
-        if ($model.fileName) {
-            # 四个参数的情况：URL, 文件名, 认证头, 目标目录
-            & "$ROOT_DIR\download.ps1" `
+    } catch {
+        Write-Host "模型配置解析出现问题，使用默认空配置" -ForegroundColor Yellow
+    }
+    if ($models -and $models.models -and $models.models.Count -gt 0) {
+        foreach ($model in $models.models) {
+            Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
+            $targetDir = Join-Path $COMFY_DIR $model.dir
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force
+            }
+            # 修改这部分代码
+            if ($model.fileName) {
+                # 四个参数的情况：URL, 文件名, 认证头, 目标目录
+                & "$ROOT_DIR\download.ps1" `
             "$($model.url)" `
             "$($model.fileName)" `
             "Authorization: Bearer $HF_TOKEN" `
             "$targetDir"
-        } else {
-            # 三个参数的情况：URL, 认证头, 目标目录
-            & "$ROOT_DIR\download.ps1" `
+            } else {
+                # 三个参数的情况：URL, 认证头, 目标目录
+                & "$ROOT_DIR\download.ps1" `
             "$($model.url)" `
             "Authorization: Bearer $HF_TOKEN" `
             "$targetDir"
+            }
         }
     }
+
     Pop-Location
 
     # 安装huggingface仓库
