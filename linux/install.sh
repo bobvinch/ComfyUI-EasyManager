@@ -151,6 +151,7 @@ bash ./install_repos_hf.sh "$HF_TOKEN"
 
 
 #启动ComfyUI
+cd "$ROOT_DIR"
 echo "🚀 启动ComfyUI"
 bash ./start.sh "$PORT"
 
