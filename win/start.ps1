@@ -50,98 +50,7 @@ if (-not $envExists) {
 
 # 激活环境
 Write-Host "🚀 激活 Python 环境..." -ForegroundColor Cyan
-
-function Start-ComfyUIWithLogging {
-    param(
-        [string]$condaPythonPath,
-        [string]$COMFY_DIR,
-        [int]$PORT
-    )
-
-    # 创建临时日志文件
-    $logFile = [System.IO.Path]::GetTempFileName()
-    $errorLogFile = [System.IO.Path]::GetTempFileName()
-
-    # 启动进程并捕获所有输出
-    $process = Start-Process -FilePath $condaPythonPath `
-        -ArgumentList "$COMFY_DIR/main.py", "--listen", "0.0.0.0", "--port", "$PORT" `
-        -NoNewWindow -PassThru `
-        -RedirectStandardOutput $logFile `
-        -RedirectStandardError $errorLogFile
-
-    $startTime = Get-Date
-    $serverStarted = $false
-    $lastPosition = 0
-    $lastErrorPosition = 0
-
-    while (-not $serverStarted) {
-        # 读取标准输出新增内容
-        $stream = [System.IO.File]::Open($logFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-        $stream.Position = $lastPosition
-        $reader = New-Object System.IO.StreamReader($stream)
-        $newContent = $reader.ReadToEnd()
-        $lastPosition = $stream.Position
-        $reader.Close()
-        $stream.Close()
-
-        # 读取错误输出新增内容
-        $errorStream = [System.IO.File]::Open($errorLogFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-        $errorStream.Position = $lastErrorPosition
-        $errorReader = New-Object System.IO.StreamReader($errorStream)
-        $newErrorContent = $errorReader.ReadToEnd()
-        $lastErrorPosition = $errorStream.Position
-        $errorReader.Close()
-        $errorStream.Close()
-
-        # 打印新增日志
-        if ($newContent) {
-            Write-Host $newContent -NoNewline
-        }
-        if ($newErrorContent) {
-            Write-Host $newErrorContent -NoNewline
-        }
-
-        # 检查是否启动成功
-        if ($newContent -match "To see the GUI go to: http" -or $newErrorContent -match "To see the GUI go to: http") {
-            $serverStarted = $true
-            Start-Sleep -Seconds 2
-            # 在检测到服务器启动后添加端口检查
-            if ($serverStarted) {
-                # 添加端口可用性检查
-                $portAvailable = Test-NetConnection -ComputerName localhost -Port $PORT -InformationLevel Quiet
-                if (-not $portAvailable) {
-                    Write-Host "端口 $PORT 不可用，请检查防火墙设置" -ForegroundColor Red
-                    exit 1
-                }
-
-                # 尝试多种浏览器打开方式
-                try {
-                    # 方法1：直接打开
-                    Start-Process "http://localhost:$PORT"
-                } catch {
-                    try {
-                        # 方法2：通过默认浏览器打开
-                        Start-Process "open" -ArgumentList "http://localhost:$PORT"
-                    } catch {
-                        Write-Host "无法自动打开浏览器，请手动访问: http://localhost:$PORT" -ForegroundColor Yellow
-                    }
-                }
-            }
-            break
-        }
-
-        Start-Sleep -Milliseconds 100
-    }
-
-    # 清理临时文件
-    Remove-Item $logFile -ErrorAction SilentlyContinue
-    Remove-Item $errorLogFile -ErrorAction SilentlyContinue
-
-    return $process
-}
-
 Write-Host "正在启动 ComfyUI" -ForegroundColor Green
-
 # 创建日志文件
 $logFile = "comfy.log"
 $errorLogFile = "comfy_error.log"
@@ -178,7 +87,8 @@ while (-not $serverStarted) {
     if ($allContent.Count -gt $processedLines) {
         for ($i = $processedLines; $i -lt $allContent.Count; $i++) {
             $line = $allContent[$i]
-            Write-Host "$line"
+            # 使用以下方式输出，避免编码问题
+            [Console]::WriteLine($line)
 
             if ($line -match "To see the GUI go to: http") {
                 $serverStarted = $true

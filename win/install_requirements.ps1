@@ -8,6 +8,7 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 # 设置镜像源
 Write-Host "🚀 设置默认镜像源为阿里云镜像..." -ForegroundColor Cyan
 $PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
+$ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
 $configFile = Join-Path $ROOT_DIR "config.toml"
 $config = Convert-FromToml $configFile
 $condaPipPath = "$ENV_PATH\Scripts\pip.exe"
@@ -340,6 +341,10 @@ function Install-CustomNodeRequirements {
     # 获取所有子目录
     $nodeFolders = Get-ChildItem -Path $CustomNodesPath -Directory
 
+    Write-Host "共有" $nodeFolders.Count "个自定义节点，开始遍历自定义节点目录..." -ForegroundColor Cyan
+
+
+
     foreach ($folder in $nodeFolders) {
         $reqFile = Join-Path $folder.FullName "requirements.txt"
 
@@ -468,7 +473,6 @@ try {
 
     if (-not $?) {
         Write-Host "❌ 依赖安装失败" -ForegroundColor Red
-        exit 1
     }
 
     Write-Host "✅ ComfyUI依赖安装完成" -ForegroundColor Green
@@ -482,52 +486,54 @@ try {
     $reposFile = Join-Path $ROOT_DIR "repos.toml"
     if (-not (Test-Path $reposFile)) {
         Write-Host "❌ 仓库配置文件不存在: $reposFile" -ForegroundColor Red
-        exit 1
     }
+    else
+    {
+        $repos = Convert-FromToml $reposFile
+        Write-Host "🔍 共发现 $($repos.repos.Count) 个自定义节点需要处理" -ForegroundColor Cyan
+        # 安装仓库和依赖
+        foreach ($repo in $repos.repos) {
+            # 移除 .git 后缀获取仓库名
+            $repoName = Split-Path $repo.url -Leaf
+            $repoName = $repoName -replace '\.git$', ''
 
-    $repos = Convert-FromToml $reposFile
-    Write-Host "🔍 共发现 $($repos.repos.Count) 个自定义节点需要处理" -ForegroundColor Cyan
-    # 安装仓库和依赖
-    foreach ($repo in $repos.repos) {
-        # 移除 .git 后缀获取仓库名
-        $repoName = Split-Path $repo.url -Leaf
-        $repoName = $repoName -replace '\.git$', ''
+            Write-Host "🔄 安装节点依赖: $repoName" -ForegroundColor Cyan
 
-        Write-Host "🔄 安装节点依赖: $repoName" -ForegroundColor Cyan
-
-        # 克隆仓库
-        if (-not (Test-Path $repoName)) {
-            try {
-                git clone $repo.url
-                if ($LASTEXITCODE -ne 0) {
-                    throw "仓库克隆失败: $repoName"
+            # 克隆仓库
+            if (-not (Test-Path $repoName)) {
+                try {
+                    git clone $repo.url
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "仓库克隆失败: $repoName"
+                    }
+                    Write-Host "✅ 仓库克隆成功: $repoName" -ForegroundColor Green
                 }
-                Write-Host "✅ 仓库克隆成功: $repoName" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "❌ 仓库克隆失败: $repoName" -ForegroundColor Red
-                Write-Host "错误详情: $_" -ForegroundColor Red
-                continue  # 跳过当前仓库继续处理下一个
-            }
-        }
-
-        # 安装依赖
-        $reqFile = Join-Path $repoName "requirements.txt"
-        if (Test-Path $reqFile) {
-            try {
-                Install-Requirements -ReqFile $reqFile -Context "$repoName 插件"
-                if (-not $?) {
-                    Write-Host "⚠️ 插件依赖安装可能存在问题: $repoName" -ForegroundColor Yellow
+                catch {
+                    Write-Host "❌ 仓库克隆失败: $repoName" -ForegroundColor Red
+                    Write-Host "错误详情: $_" -ForegroundColor Red
+                    continue  # 跳过当前仓库继续处理下一个
                 }
             }
-            catch {
-                Write-Host "❌ 插件依赖安装失败: $repoName" -ForegroundColor Red
-                Write-Host "错误详情: $_" -ForegroundColor Red
+
+            # 安装依赖
+            $reqFile = Join-Path $repoName "requirements.txt"
+            if (Test-Path $reqFile) {
+                try {
+                    Install-Requirements -ReqFile $reqFile -Context "$repoName 插件"
+                    if (-not $?) {
+                        Write-Host "⚠️ 插件依赖安装可能存在问题: $repoName" -ForegroundColor Yellow
+                    }
+                }
+                catch {
+                    Write-Host "❌ 插件依赖安装失败: $repoName" -ForegroundColor Red
+                    Write-Host "错误详情: $_" -ForegroundColor Red
+                }
+            } else {
+                Write-Host "ℹ️ 未找到依赖文件，跳过: $repoName" -ForegroundColor Gray
             }
-        } else {
-            Write-Host "ℹ️ 未找到依赖文件，跳过: $repoName" -ForegroundColor Gray
         }
     }
+
 
     # 安装自定义节点依赖
     Install-CustomNodeRequirements
@@ -592,5 +598,5 @@ try {
 }
 catch {
     Write-Host "❌ 安装过程中发生错误: $_" -ForegroundColor Red
-    exit 1
+    throw
 }
