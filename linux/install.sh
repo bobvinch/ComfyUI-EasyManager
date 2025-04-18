@@ -114,7 +114,6 @@ fi
 MODELS_TOML="$ROOT_DIR/models.toml"
 if [ ! -f "$MODELS_TOML" ]; then
     echo "❌ 未找到模型配置文件：$MODELS_TOML"
-    exit 1
 else
     echo "🚀 开始下载模型"
     # 给下载脚本添加执行权限
