@@ -343,27 +343,44 @@ function Install-PyTorch {
 
         if ($cudaVersion) {
             Write-Host "⚙️ 正在安装CUDA版本的PyTorch..."
-            # 获取匹配的版本信息
-            $versionInfo = Get-PyTorchVersion -cudaVersion $cudaVersion
-            Write-Host "📦 选择的版本信息："
-            Write-Host "  PyTorch: $($versionInfo.torch)"
-            Write-Host "  TorchVision: $($versionInfo.torchvision)"
-            Write-Host "  TorchAudio: $($versionInfo.torchaudio)"
-            Write-Host "  CUDA 后缀: $($versionInfo.cuda_suffix)"
 
-            # 直接使用返回的 cuda_suffix
-            $packages = $versionInfo
-
-            # 安装 PyTorch
+            Write-Host "📦 检测到CUDA版本: $cudaVersion"
+            # 自动版本
             conda install `
-            pytorch==$($packages.torch) `
-            torchvision==$($packages.torchvision) `
-            torchaudio==$($packages.torchaudio) `
-            pytorch-cuda=$($packages.cudaVersion) `
-            -p $envPath -c pytorch -c nvidia -y
+                pytorch `
+                torchvision `
+                torchaudio `
+                -p $envPath -c pytorch -c nvidia -y
+
+            # 获取匹配的版本信息
+#            $versionInfo = Get-PyTorchVersion -cudaVersion $cudaVersion
+#            Write-Host "📦 选择的版本信息："
+#            Write-Host "  PyTorch: $($versionInfo.torch)"
+#            Write-Host "  TorchVision: $($versionInfo.torchvision)"
+#            Write-Host "  TorchAudio: $($versionInfo.torchaudio)"
+#            Write-Host "  CUDA 后缀: $($versionInfo.cuda_suffix)"
+#
+#            # 直接使用返回的 cuda_suffix
+#            $packages = $versionInfo
+#
+#            # 安装 PyTorch
+#            conda install `
+#            pytorch==$($packages.torch) `
+#            torchvision==$($packages.torchvision) `
+#            torchaudio==$($packages.torchaudio) `
+#            pytorch-cuda=$($packages.cudaVersion) `
+#            -p $envPath -c pytorch -c nvidia -y
         }
         else {
             Write-Host "⚙️ 正在安装CPU版本的PyTorch..."
+            # 自动版本
+            conda install `
+                pytorch `
+                torchvision `
+                torchaudio `
+                cpuonly `
+                -p $envPath -c pytorch -y
+
             # 安装 CPU PyTorch
             conda install `
             pytorch==$($packages.torch) `
