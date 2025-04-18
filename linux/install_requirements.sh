@@ -190,6 +190,42 @@ install_requirements() {
     echo "✅ ${context}依赖检查完成"
 }
 
+
+# 安装自定义节点依赖，包含用户的已经安装的节点
+install_custom_node_requirements() {
+    local custom_nodes_path="$COMFY_DIR/custom_nodes"
+
+    echo "🔍 开始检查自定义节点依赖..."
+
+    # 确保目录存在
+    if [ ! -d "$custom_nodes_path" ]; then
+        echo "❌ 自定义节点目录不存在: $custom_nodes_path"
+        return
+    fi
+
+    # 获取所有子目录
+    local node_folders=("$custom_nodes_path"/*/)
+    local folder_count=${#node_folders[@]}
+
+    echo "📊 共有 $folder_count 个自定义节点，开始遍历..."
+
+    for folder in "${node_folders[@]}"; do
+        local req_file="$folder/requirements.txt"
+
+        if [ -f "$req_file" ]; then
+            echo "📦 发现依赖文件: $(basename "$folder")"
+
+            if ! install_requirements "$req_file" "$(basename "$folder")"; then
+                echo "💥 安装失败: $(basename "$folder")"
+            fi
+        else
+            echo "⏩ 跳过: $(basename "$folder") (无requirements.txt)"
+        fi
+    done
+
+    echo "✅ 自定义节点依赖检查完成"
+}
+
 # 安装强制指定的依赖
 check_forced_dependencies() {
     local config_file="$1"
@@ -382,6 +418,9 @@ while IFS= read -r repo; do
     cd ..
     echo "-------------------"
 done <<< "$REPOS_URLS"
+
+# 安装用户自定义的节点依赖
+install_custom_node_requirements
 
 # 检查并修复依赖
 check_dependencies_conflicts
