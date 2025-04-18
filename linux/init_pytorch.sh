@@ -46,10 +46,31 @@ install_pytorch() {
     fi
 }
 
+
+# 检查 PyTorch 安装状态的函数
+check_pytorch() {
+    if python3 -c "import torch; print(torch.__version__)" &>/dev/null; then
+        version=$(python3 -c "import torch; print(torch.__version__)")
+        cuda_available=$(python3 -c "import torch; print(torch.cuda.is_available())")
+        echo "PyTorch 已安装（版本：$version，CUDA可用：$cuda_available）"
+        return 0
+    else
+        echo "PyTorch 未安装"
+        return 1
+    fi
+}
+
 # 主程序
 # 初始化 conda
 source "$CONDA_PATH/etc/profile.d/conda.sh"
 conda init bash
+conda activate "$ENV_PATH"
+
+# 检查 PyTorch 是否已安装
+if check_pytorch; then
+    echo "PyTorch 已正确安装，跳过安装步骤"
+    exit 0
+fi
 
 echo "配置 conda 镜像源..."
 configure_conda_channels
