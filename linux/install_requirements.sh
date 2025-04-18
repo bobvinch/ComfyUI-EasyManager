@@ -335,7 +335,7 @@ for tool in yq jq; do
             wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
             chmod a+x /usr/local/bin/yq
         elif [ "$tool" = "jq" ]; then
-            apt-get update && sudo apt-get install -y jq
+            apt-get update && apt-get install -y jq
         fi
 
         if [ $? -ne 0 ]; then
