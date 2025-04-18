@@ -90,58 +90,66 @@ echo "🚀 aria2c安装成功"
 HF_TOKEN=""
 
 chmod +x parse_toml.sh
-TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
-if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
-    if [ "$TOKEN_VALUE" != "" ]; then
-        HF_TOKEN="$TOKEN_VALUE"
-        echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
-    else
-        echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空，你可能无法正常下载部分huggingface模型"
-    fi
+
+CONFIG_TOML="$ROOT_DIR/config.toml"
+if [ ! -f "$CONFIG_TOML" ]; then
+    echo "❌ 未找到配置文件：$CONFIG_TOML"
 else
-    echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
+    TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
+    if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
+        if [ "$TOKEN_VALUE" != "" ]; then
+            HF_TOKEN="$TOKEN_VALUE"
+            echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
+        else
+            echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空，你可能无法正常下载部分huggingface模型"
+        fi
+    else
+        echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
+    fi
 fi
+
+
 
 # 检查 TOML 文件
 MODELS_TOML="$ROOT_DIR/models.toml"
 if [ ! -f "$MODELS_TOML" ]; then
     echo "❌ 未找到模型配置文件：$MODELS_TOML"
     exit 1
+else
+    echo "🚀 开始下载模型"
+    # 给下载脚本添加执行权限
+    cd "$ROOT_DIR"
+    chmod +x download.sh
+    # 使用 yq 将 TOML 转换为 JSON 格式并处理
+    yq -o=json eval "$MODELS_TOML" | jq -r '.models[] | "\(.id)|\(.url)|\(.dir)|\(.fileName // "")"' | while IFS='|' read -r id url dir filename; do
+        echo "🎯 开始处理任务: $id"
+        echo "📥 下载链接: $url"
+        echo "📂 下载目录: $COMFY_DIR$dir"
+        echo "📄 文件名: $filename"
+
+        # 确保目录存在
+        mkdir -p "$COMFY_DIR$dir"
+
+        # 根据是否存在 fileName 来决定下载参数
+        if [ -n "$filename" ]; then
+            echo "📄 使用指定文件名: $filename"
+            if ./download.sh "$url" "$filename" "Authorization: Bearer $HF_TOKEN" "$COMFY_DIR$dir"; then
+                echo "✅ 任务 $id 完成"
+            else
+                echo "❌ 任务 $id 失败"
+            fi
+        else
+            if ./download.sh "$url" "Authorization: Bearer $HF_TOKEN" "$COMFY_DIR$dir"; then
+                echo "✅ 任务 $id 完成"
+            else
+                echo "❌ 任务 $id 失败"
+            fi
+        fi
+        echo "-------------------"
+    done
+
+    echo "✨ 所有模型下载任务处理完成"
 fi
-
-# 给下载脚本添加执行权限
-cd "$ROOT_DIR"
-chmod +x download.sh
-
-# 使用 yq 将 TOML 转换为 JSON 格式并处理
-yq -o=json eval "$MODELS_TOML" | jq -r '.models[] | "\(.id)|\(.url)|\(.dir)|\(.fileName // "")"' | while IFS='|' read -r id url dir filename; do
-    echo "🎯 开始处理任务: $id"
-    echo "📥 下载链接: $url"
-    echo "📂 下载目录: $COMFY_DIR$dir"
-    echo "📄 文件名: $filename"
-
-    # 确保目录存在
-    mkdir -p "$COMFY_DIR$dir"
-
-    # 根据是否存在 fileName 来决定下载参数
-    if [ -n "$filename" ]; then
-        echo "📄 使用指定文件名: $filename"
-        if ./download.sh "$url" "$filename" "Authorization: Bearer $HF_TOKEN" "$COMFY_DIR$dir"; then
-            echo "✅ 任务 $id 完成"
-        else
-            echo "❌ 任务 $id 失败"
-        fi
-    else
-        if ./download.sh "$url" "Authorization: Bearer $HF_TOKEN" "$COMFY_DIR$dir"; then
-            echo "✅ 任务 $id 完成"
-        else
-            echo "❌ 任务 $id 失败"
-        fi
-    fi
-    echo "-------------------"
-done
-
-echo "✨ 所有下载任务处理完成"
 
 #安装huggingface仓库
 cd "$ROOT_DIR"
