@@ -63,6 +63,12 @@ else
 fi
 
 
+echo "🚀 初始化pytorch 环境"
+cd "$ROOT_DIR"
+chmod +x init_pytorch.sh
+./init_pytorch.sh
+
+
 # 安装节点和依赖
 cd "$ROOT_DIR"
 chmod +x install_requirements.sh
