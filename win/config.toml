@@ -1,0 +1,12 @@
+[[authorizations]]
+huggingface_token = ""
+
+
+[[resources]]
+#pip_mirror = "https://pypi.tuna.tsinghua.edu.cn/simple"
+pip_mirror = "https://mirrors.aliyun.com/pypi/simple"
+#自定义包，优先级高于自动修复，系统优先以这部分依赖为准
+[[packages]]
+sympy="sympy == 1.13.1"
+numpy="numpy==1.26.4"
+rich =""

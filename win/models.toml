@@ -1,0 +1,138 @@
+
+
+### 基础大模型
+#[[models]]
+#id = "flux-dev-fp8"
+#url = "https://hf-mirror.com/Kijai/flux-fp8/resolve/main/flux1-dev-fp8-e4m3fn.safetensors?download=true"
+#dir = "/models/unet"
+#description = "Flux-dev-fp8 Flux fp8"
+#### 宫崎骏风格flux模型，下载地址失效可以在Liblib复制链接下载
+#[[models]]
+#id = "flux-dev"
+#url = "https://liblibai-online.liblib.cloud/web/model/f9d0887aec8edee706adb5372faf3636/12baf979b74ae9ed6292ddb350dbc949ed6811f5c7eb9aae871e81452ae31ce4.safetensors?auth_key=1744546334-110f9611581a4250a60ed1b7b96497f6-0-db33d12d696e178707dcbfedd6cee19f&attname=%E3%80%90%E5%8A%A8%E6%BC%AB%E9%A3%8E%E6%A0%BC%E3%80%91_juaner-%E5%AE%AB%E5%B4%8E%E9%AA%8F%E5%90%89%E5%8D%9C%E5%8A%9B%E5%B7%A5%E4%BD%9C%E5%AE%A4%E9%A3%8E%E6%A0%BC%20flux_v2.0.safetensors"
+#dir = "/models/unet"
+#fileName = "juaner-flux_v2.0.safetensors"
+#description = "Flux-dev Flux"
+#
+#### 混元3D模型
+#[[models]]
+#id = "huanyuan-3d-v2.0"
+#url = "https://hf-mirror.com/Kijai/Hunyuan3D-2_safetensors/resolve/main/hunyuan3d-dit-v2-0-fp16.safetensors?download=true"
+#dir = "/models/diffusion_models"
+#description = "huanyuan-3D-V2.0"
+#
+#[[models]]
+#id = "flux-redux"
+#url = "https://hf-mirror.com/black-forest-labs/FLUX.1-Redux-dev/resolve/main/flux1-redux-dev.safetensors?download=true"
+#dir = "/models/style_models"
+#description = "flux-redux"
+#
+#[[models]]
+#id = "flux-vae"
+#url = "https://hf-mirror.com/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors?download=true"
+#dir = "/models/vae"
+#description = "flux-vae"
+#
+#[[models]]
+#id = "flux-fill"
+#url = "https://hf-mirror.com/black-forest-labs/FLUX.1-Fill-dev/resolve/main/flux1-fill-dev.safetensors?download=true"
+#dir = "/models/unet"
+#description = "flux-fill重绘模型"
+#
+#[[models]]
+#id = "text-encoder-t5xxl-fp8"
+#url = "https://hf-mirror.com/stabilityai/stable-diffusion-3-medium/resolve/main/text_encoders/t5xxl_fp8_e4m3fn.safetensors?download=true"
+#dir = "/models/text_encoders"
+#description = "text-encoder-t5xxl-fp8"
+#
+#[[models]]
+#id = "text-encoder-clip_l"
+#url = "https://hf-mirror.com/stabilityai/stable-diffusion-3-medium/resolve/main/text_encoders/clip_l.safetensors?download=true"
+#dir = "/models/text_encoders"
+#description = "text-encoder-clip_l"
+#
+#[[models]]
+#id = "text-encoder-clip_g"
+#url = "https://hf-mirror.com/stabilityai/stable-diffusion-3-medium/resolve/main/text_encoders/clip_g.safetensors?download=true"
+#dir = "/models/text_encoders"
+#description = "text-encoder-clip_g"
+#
+#[[models]]
+#id = "wan2.1-encode-umt5-xxl-enc-fp8"
+#url = "https://hf-mirror.com/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true"
+#dir = "/models/text_encoders"
+#description = "Wan2.1视频模型文本编码器"
+#
+#[[models]]
+#id = "wan2.1-text2video-fp8-14B"
+#url = "https://hf-mirror.com/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_t2v_14B_fp8_e4m3fn.safetensors?download=true"
+#dir = "/models/unet"
+#description = "Wan2.1文生视频模型"
+#
+#[[models]]
+#id = "wan2.1-image2video-480p-fp16-14B"
+#url = "https://hf-mirror.com/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp16.safetensors?download=true"
+#dir = "/models/unet"
+#description = "Wan2.1图生视频模型FP16"
+#
+#[[models]]
+#id = "wan2.1-vae"
+#url = "https://hf-mirror.com/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors?download=true"
+#dir = "/models/vae"
+#description = "Wan2.1视频模型VAE"
+#
+#[[models]]
+#id = "wan2.1-clip-vision-h"
+#url = "https://hf-mirror.com/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors?download=true"
+#dir = "/models/clip_vision"
+#description = "Wan2.1 Clip model"
+#
+#[[models]]
+#id = "text-encoder-sigclip-patch14-384"
+#url = "https://hf-mirror.com/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors?download=true"
+#dir = "/models/clip_vision"
+#description = "sigclip视觉模型"
+#
+#### 放大模型
+#[[models]]
+#id = "upscale-Real-ESRGAN-x4plus"
+#url = "https://hf-mirror.com/schwgHao/RealESRGAN_x4plus/resolve/main/RealESRGAN_x4plus.pth?download=true"
+#dir = "/models/upscale_models"
+#description = "高清放大4倍Plus"
+
+#[[models]]
+#id = "upscale-Real-ESRGAN-x2"
+#url = "https://hf-mirror.com/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x2.pth?download=true"
+#dir = "/models/upscale_models"
+#description = "高清放大2倍"
+#
+#[[models]]
+#id = "upscale-Real-ESRGAN-x4"
+#url = "https://hf-mirror.com/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth?download=true"
+#dir = "/models/upscale_models"
+#description = "高清放大4倍-normal"
+#
+#[[models]]
+#id = "upscale-Real-ESRGAN-x8"
+#url = "https://hf-mirror.com/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x8.pth?download=true"
+#dir = "/models/upscale_models"
+#description = "高清放大8倍"
+
+##分割模型SAM
+#[[models]]
+#id = "sam-vit-huge"
+#url = "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth"
+#dir = "/models/sams"
+#description = "SAM-vit-huge-4b8939"
+#
+#[[models]]
+#id = "sam-vit-large"
+#url = "https://hf-mirror.com/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swint_ogc.pth"
+#dir = "/models/grounding-dino"
+#description = "GroundingDINO-swint-ogc"
+
+[[models]]
+id = "test"
+url = "https://civitai-delivery-worker-prod.5ac0637cfd0766c97916cefa3764fbdf.r2.cloudflarestorage.com/model/764940/juggernautreborn.JtiD.safetensors?X-Amz-Expires=86400&response-content-disposition=attachment%3B%20filename%3D%22juggernaut_reborn.safetensors%22&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=e01358d793ad6966166af8b3064953ad/20250416/us-east-1/s3/aws4_request&X-Amz-Date=20250416T132709Z&X-Amz-SignedHeaders=host&X-Amz-Signature=f8cbcaa94f33b427f9fc21464a06a803884d752b64db0002b885df9dca2ecea5"
+dir = "/models/checkpoints"
+description = "GroundingDINO-swint-ogc"
