@@ -146,8 +146,6 @@ install_requirements() {
         fi
     done < "$req_file"
 
-    #使用conda初始化pytorch环境
-
 
     # 将torch、torchvision、torchaudio的依赖从to_install中移除
     # 创建一个新数组来存储非 torch 相关的包
