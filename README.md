@@ -10,6 +10,10 @@
 
 ### 使用方法
 
+### 参数配置
+配置文件：`config.toml`
+1. 配置huggingface的下载token： 部分huggingface 文件可能需要配置token才能下载（头像-Access Tokens,新建token，并且给token指定仓库)，具体请参考[huggingface](https://huggingface.co/models)
+![](./public/hf_token.png)
 #### 一键运行
 一键安装及启动:右键`setup.ps1` 使用PowerShell运行
 
