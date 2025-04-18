@@ -6,7 +6,7 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptPath "parse_toml.ps1")
 
 # 设置镜像源
-Write-Host "🚀 设置自定义镜像源为阿里云镜像..." -ForegroundColor Cyan
+Write-Host "🚀 设置默认镜像源为阿里云镜像..." -ForegroundColor Cyan
 $PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
 $configFile = Join-Path $ROOT_DIR "config.toml"
 $config = Convert-FromToml $configFile

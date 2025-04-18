@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#镜像源
-echo "🚀 设置自定义镜像源为阿里云镜像..."
-PIP_MIRROR="https://mirrors.aliyun.com/pypi/simple/"
+
+
+
+
 # 获取脚本所在目录
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 echo "脚本所在目录是: $ROOT_DIR"
@@ -10,6 +11,22 @@ COMFY_DIR="$ROOT_DIR/ComfyUI"
 
 CONDA_PATH="/root/miniconda3"
 ENV_PATH="$ROOT_DIR/envs/comfyui"
+
+
+#镜像源
+echo "🚀 设置默认镜像源为阿里云镜像..."
+PIP_MIRROR="https://mirrors.aliyun.com/pypi/simple/"
+cd "$ROOT_DIR" || exit
+chmod +x parse_toml.sh
+CUSTOM_MIRROR=$(./parse_toml.sh ./config.toml | jq -r '.resources[].pip_mirror // empty')
+if [ -n "$CUSTOM_MIRROR" ] && [ "$CUSTOM_MIRROR" != "null" ]; then
+    if [ "$CUSTOM_MIRROR" != "" ]; then
+        PIP_MIRROR="$CUSTOM_MIRROR"
+        echo "✅ 已设置 镜像源为用户自定镜像源: $CUSTOM_MIRROR"
+    else
+        echo "⚠️ config.toml 中的 自定义镜像源为空，使用默认的镜像源：$PIP_MIRROR"
+    fi
+fi
 
 # 版本比较函数
 version_compare() {

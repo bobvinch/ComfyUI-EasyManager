@@ -8,14 +8,19 @@
 - 高阶：手动锁定依赖版本
 - 其他更多强大功能，后续持续更新
 
-### 使用方法
+## 使用方法
 
 ### 参数配置
 配置文件：`config.toml`
 1. 配置huggingface的下载token： 部分huggingface 文件可能需要配置token才能下载（头像-Access Tokens,新建token，并且给token指定仓库)，具体请参考[huggingface](https://huggingface.co/models)
 ![](./public/hf_token.png)
-#### 一键运行
-一键安装及启动:右键`setup.ps1` 使用PowerShell运行
+### Window一键运行
+
+```bash
+# 克隆脚本
+git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
+```
+进入ComfyUI-EasyManager目录下win目录,一键安装及启动:右键`setup.ps1` 使用PowerShell运行
 
 #### 仅启动
 启动ComfyUI环境：右键`start.ps1` 使用PowerShell运行
@@ -34,3 +39,22 @@
 
 #### 初始化基础环境-修复pytorch环境
 右键`init_pytorch.ps1` 使用PowerShell运行
+
+### Linux一键运行
+```bash
+# 克隆脚本
+git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
+# 进入ComfyUI-EasyManager目录下linux目录,一键安装及启动:
+cd ./ComfyUI-EasyManager/linux
+# 添加执行权限
+chmod +x install.sh
+# 一键启动
+./install.sh
+
+```
+
+### 仅启动
+```bash
+chmod +x start.sh
+./start.sh
+```
