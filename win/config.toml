@@ -9,4 +9,3 @@ pip_mirror = "https://mirrors.aliyun.com/pypi/simple"
 [[packages]]
 sympy="sympy == 1.13.1"
 numpy="numpy==1.26.4"
-rich =""

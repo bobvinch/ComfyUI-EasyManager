@@ -1,85 +1,85 @@
-#[[repos]]
-#url = "https://github.com/jianzhichun/ComfyUI-Easyai.git"
-#description = "EasyAI工作流自动上传插件"
-#
-#[[repos]]
-#url = "https://github.com/Comfy-Org/ComfyUI-Manager.git"
-#description = "ComfyUI 管理器"
-#
-#[[repos]]
-#url = "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git"
-#description = "ComfyUI自定义脚本"
-#
-#[[repos]]
-#url = "https://github.com/zfkun/ComfyUI_zfkun.git"
-#description = "zfkun-阿里百度文本翻译节点"
-#
-#[[repos]]
-#url = "https://github.com/AIGODLIKE/AIGODLIKE-ComfyUI-Translation.git"
-#description = "界面汉化"
-#
-#[[repos]]
-#url = "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git"
-#description = "视频辅助工具"
-#
-#[[repos]]
-#url = "https://github.com/WASasquatch/was-node-suite-comfyui.git"
-#description = "WAS提供图像上传和其他工具"
-#
-#[[repos]]
-#url = "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git"
-#description = "ComfyUI impact pack-工具"
-#
-#[[repos]]
-#url = "https://github.com/yolain/ComfyUI-Easy-Use.git"
-#description = "ComfyUI易用插件-提供多个整合节点"
-#
-#[[repos]]
-#url = "https://github.com/chflame163/ComfyUI_LayerStyle.git"
-#description = "ComfyUI图层样式插件-ComfyUI界的PS"
-#
-#[[repos]]
-#url = "https://github.com/rgthree/rgthree-comfy.git"
-#description = "rgthree插件"
-#
-#[[repos]]
-#url = "https://github.com/kijai/ComfyUI-KJNodes.git"
-#description = "KJNodes"
-#
-#[[repos]]
-#url = "https://github.com/storyicon/comfyui_segment_anything.git"
-#description = "SegmentAnything"
-#
-#[[repos]]
-#url = "https://github.com/chrisgoringe/cg-use-everywhere.git"
-#description = "Use everywhere"
-#
-#[[repos]]
-#url = "https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch.git"
-#description = "Inpaint Crop and Stitch"
-#
-#[[repos]]
-#url = "https://github.com/cubiq/ComfyUI_essentials.git"
-#description = "Essential nodes that are weirdly missing from ComfyUI core."
-#
-#[[repos]]
-#url = "https://github.com/kijai/ComfyUI-Florence2.git"
-#description = "多模态识别，提示词反推"
-#
-#[[repos]]
-#url = "https://github.com/TinyTerra/ComfyUI_tinyterraNodes.git"
-#description = "tinyterraNodes"
-#
-#[[repos]]
-#url = "https://github.com/cubiq/ComfyUI_IPAdapter_plus.git"
-#description = "IPAdapter plus"
-#
-#### 3D工作流
-#[[repos]]
-#url = "https://github.com/kijai/ComfyUI-Hunyuan3DWrapper.git"
-#description = "混元3D-KJ"
-#
-###不是特别重要的节点
-#[[repos]]
-#url = "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes.git"
-#description = "Comfyroll Studio"
+[[repos]]
+url = "https://github.com/jianzhichun/ComfyUI-Easyai.git"
+description = "EasyAI工作流自动上传插件"
+
+[[repos]]
+url = "https://github.com/Comfy-Org/ComfyUI-Manager.git"
+description = "ComfyUI 管理器"
+
+[[repos]]
+url = "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git"
+description = "ComfyUI自定义脚本"
+
+[[repos]]
+url = "https://github.com/zfkun/ComfyUI_zfkun.git"
+description = "zfkun-阿里百度文本翻译节点"
+
+[[repos]]
+url = "https://github.com/AIGODLIKE/AIGODLIKE-ComfyUI-Translation.git"
+description = "界面汉化"
+
+[[repos]]
+url = "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git"
+description = "视频辅助工具"
+
+[[repos]]
+url = "https://github.com/WASasquatch/was-node-suite-comfyui.git"
+description = "WAS提供图像上传和其他工具"
+
+[[repos]]
+url = "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git"
+description = "ComfyUI impact pack-工具"
+
+[[repos]]
+url = "https://github.com/yolain/ComfyUI-Easy-Use.git"
+description = "ComfyUI易用插件-提供多个整合节点"
+
+[[repos]]
+url = "https://github.com/chflame163/ComfyUI_LayerStyle.git"
+description = "ComfyUI图层样式插件-ComfyUI界的PS"
+
+[[repos]]
+url = "https://github.com/rgthree/rgthree-comfy.git"
+description = "rgthree插件"
+
+[[repos]]
+url = "https://github.com/kijai/ComfyUI-KJNodes.git"
+description = "KJNodes"
+
+[[repos]]
+url = "https://github.com/storyicon/comfyui_segment_anything.git"
+description = "SegmentAnything"
+
+[[repos]]
+url = "https://github.com/chrisgoringe/cg-use-everywhere.git"
+description = "Use everywhere"
+
+[[repos]]
+url = "https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch.git"
+description = "Inpaint Crop and Stitch"
+
+[[repos]]
+url = "https://github.com/cubiq/ComfyUI_essentials.git"
+description = "Essential nodes that are weirdly missing from ComfyUI core."
+
+[[repos]]
+url = "https://github.com/kijai/ComfyUI-Florence2.git"
+description = "多模态识别，提示词反推"
+
+[[repos]]
+url = "https://github.com/TinyTerra/ComfyUI_tinyterraNodes.git"
+description = "tinyterraNodes"
+
+[[repos]]
+url = "https://github.com/cubiq/ComfyUI_IPAdapter_plus.git"
+description = "IPAdapter plus"
+
+### 3D工作流
+[[repos]]
+url = "https://github.com/kijai/ComfyUI-Hunyuan3DWrapper.git"
+description = "混元3D-KJ"
+
+##不是特别重要的节点
+[[repos]]
+url = "https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes.git"
+description = "Comfyroll Studio"

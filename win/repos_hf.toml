@@ -1,14 +1,14 @@
-#[[repos]]
-#url = "https://huggingface.co/MiaoshouAI/Florence-2-large-PromptGen-v2.0"
-#local_path = "/models/LLM"
-#description = "Florence"
-#
-#[[repos]]
-#url = "https://huggingface.co/unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"
-#local_path = "/models/LLM"
-#description = "Meta-Llama-3.1-8B"
-#
-#[[repos]]
-#url = "https://huggingface.co/Kijai/llava-llama-3-8b-text-encoder-tokenizer"
-#local_path = "/models/LLM"
-#description = "llava-llama-3-8b"
+[[repos]]
+url = "https://huggingface.co/MiaoshouAI/Florence-2-large-PromptGen-v2.0"
+local_path = "/models/LLM"
+description = "Florence"
+
+[[repos]]
+url = "https://huggingface.co/unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"
+local_path = "/models/LLM"
+description = "Meta-Llama-3.1-8B"
+
+[[repos]]
+url = "https://huggingface.co/Kijai/llava-llama-3-8b-text-encoder-tokenizer"
+local_path = "/models/LLM"
+description = "llava-llama-3-8b"
