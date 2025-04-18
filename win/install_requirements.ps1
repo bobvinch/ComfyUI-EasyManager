@@ -10,6 +10,8 @@ Write-Host "🚀 设置默认镜像源为阿里云镜像..." -ForegroundColor Cy
 $PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
 $configFile = Join-Path $ROOT_DIR "config.toml"
 $config = Convert-FromToml $configFile
+$condaPipPath = "$ENV_PATH\Scripts\pip.exe"
+$condaPythonPath = "$ENV_PATH\python.exe"
 # 配置pip镜像源
 if ($config.resources -and $config.resources.pip_mirror) {
     Write-Host "🔧 检测到配置的pip镜像源，正在设置: $($config.resources.pip_mirror)" -ForegroundColor Cyan
@@ -322,6 +324,127 @@ function Test-PackageUpgradeNeeded {
     }
 }
 
+# 遍历自定义节点目录安装依赖
+function Install-CustomNodeRequirements {
+
+    $customNodesPath = Join-Path $COMFY_DIR "custom_nodes"
+
+    Write-Host "开始检查自定义节点依赖..." -ForegroundColor Cyan
+
+    # 确保目录存在
+    if (-not (Test-Path $CustomNodesPath)) {
+        Write-Host "自定义节点目录不存在: $CustomNodesPath" -ForegroundColor Red
+        return
+    }
+
+    # 获取所有子目录
+    $nodeFolders = Get-ChildItem -Path $CustomNodesPath -Directory
+
+    foreach ($folder in $nodeFolders) {
+        $reqFile = Join-Path $folder.FullName "requirements.txt"
+
+        if (Test-Path $reqFile) {
+            Write-Host "发现依赖文件: $($folder.Name)" -ForegroundColor Green
+
+            try {
+                Install-Requirements -ReqFile $reqFile -Context $folder.Name
+            } catch {
+                Write-Host "安装依赖失败 ($($folder.Name)): $_" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "跳过 $($folder.Name): 未找到 requirements.txt" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host "自定义节点依赖检查完成" -ForegroundColor Cyan
+}
+
+# 检查依赖冲突
+function Test-DependencyConflicts {
+    Write-Host "🔍 检查依赖冲突..." -ForegroundColor Cyan
+
+    # 执行 pip check 并捕获输出
+    $checkOutput = & $condaPipPath check 2>&1
+
+    # 如果没有输出，说明没有依赖问题
+    if (-not $checkOutput) {
+        Write-Host "✅ 所有依赖关系正常" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "⚠️ 检测到依赖冲突，开始分析..." -ForegroundColor Yellow
+    $toUpgrade = @()
+
+    # 解析每一行输出
+    foreach ($line in $checkOutput) {
+        # 更新正则表达式以更精确匹配 Windows pip check 输出格式
+        if ($line -match "([^\s]+)\s+([^\s]+)\s+has\s+requirement\s+([^\s]+)==([^,\s]+),\s+but\s+you\s+have\s+([^\s]+)\s+([^\s]+)") {
+            $parentPkg = $matches[1]    # 父包名
+            $parentVer = $matches[2]    # 父包版本
+            $pkgName = $matches[3]      # 依赖包名
+            $requiredVer = $matches[4]  # 需求版本
+            $currentPkg = $matches[5]   # 当前包名（验证用）
+            $currentVer = $matches[6]   # 当前版本
+
+            # 验证包名匹配
+            if ($pkgName -eq $currentPkg) {
+                Write-Host "📦 检测到版本冲突: $pkgName" -ForegroundColor Yellow
+                Write-Host "   - 当前版本: $currentVer" -ForegroundColor White
+                Write-Host "   - 需求版本: ==$requiredVer" -ForegroundColor White
+                Write-Host "   - 来自包: $parentPkg $parentVer" -ForegroundColor White
+
+                $toUpgrade += @{
+                    Name = $pkgName
+                    Version = $requiredVer
+                }
+            }
+        }
+    }
+
+    # 执行修复
+    if ($toUpgrade.Count -gt 0) {
+        Write-Host "🔧 开始修复依赖问题..." -ForegroundColor Cyan
+
+        foreach ($package in $toUpgrade) {
+            Write-Host "🗑️ 卸载 $($package.Name)..." -ForegroundColor Yellow
+            & $condaPipPath uninstall -y $package.Name
+
+            $installSpec = "$($package.Name)==$($package.Version)"
+            Write-Host "📥 安装 $installSpec..." -ForegroundColor Cyan
+
+            $installResult = & $condaPipPath install $installSpec 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "⚠️ 安装 $installSpec 失败" -ForegroundColor Yellow
+
+                # 禁用安装兼容版本
+                #                $versions = & $condaPipPath index versions $package.Name 2>&1 |
+                #                        Select-String -Pattern "\((.*?)\)" |
+                #                        ForEach-Object { $_.Matches.Groups[1].Value } |
+                #                        Where-Object { $_ -notmatch "yanked" } |
+                #                        Select-Object -First 1
+                #
+                #                if ($versions) {
+                #                    Write-Host "📦 尝试安装兼容版本: $($package.Name)==$versions" -ForegroundColor Cyan
+                #                    & $condaPipPath install "$($package.Name)==$versions" --target $target --progress-bar on
+                #                }
+            }
+        }
+
+        # 最终检查
+        $finalCheck = & $condaPipPath check 2>&1
+        if ($finalCheck -match "No broken requirements found." -or -not $finalCheck) {
+            Write-Host "✨ 所有依赖问题已修复" -ForegroundColor Green
+        }
+        else {
+            Write-Host "⚠️ 仍存在依赖问题，可能需要手动处理" -ForegroundColor Red
+            Write-Host $finalCheck
+        }
+    }
+    else {
+        Write-Host "✨ 未检测到需要修复的依赖" -ForegroundColor Green
+    }
+}
+
 
 
 # 安装ComfyUI环境依赖
@@ -405,6 +528,12 @@ try {
             Write-Host "ℹ️ 未找到依赖文件，跳过: $repoName" -ForegroundColor Gray
         }
     }
+
+    # 安装自定义节点依赖
+    Install-CustomNodeRequirements
+
+    # 检查依赖冲突
+    Test-DependencyConflicts
 
     #将packages里的包，全部添加到toInstall中
     if ($config.packages) {
