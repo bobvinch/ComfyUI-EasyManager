@@ -37,26 +37,13 @@ configure_conda_channels() {
 # 安装PyTorch的函数
 install_pytorch() {
     local cuda_version=$1
-
-    case "$cuda_version" in
-        "11.8")
-            conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=11.8 -p "$ENV_PATH" -c pytorch -c nvidia -y
-            ;;
-        "12.1")
-            conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.1 -p "$ENV_PATH" -c pytorch -c nvidia -y
-            ;;
-        "12.4")
-            conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.4 -p "$ENV_PATH" -c pytorch -c nvidia -y
-            ;;
-        "none")
-            conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 cpuonly -p "$ENV_PATH" -c pytorch -y
-            ;;
-        *)
-            echo "检测到的 CUDA 版本 ($cuda_version) 不在支持列表中"
-            echo "将使用 CUDA 11.8 版本的 PyTorch"
-            conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=11.8 -p "$ENV_PATH" -c pytorch -c nvidia -y
-            ;;
-    esac
+    if [ "$cuda_version" = "none" ]; then
+        echo "未检测到 CUDA，将安装 CPU 版本的 PyTorch"
+        conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 cpuonly -p "$ENV_PATH" -c pytorch -y
+    else
+        echo "检测到 CUDA 版本: $cuda_version，将自动安装对应版本的 PyTorch"
+        conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -p "$ENV_PATH" -c pytorch -c nvidia -y
+    fi
 }
 
 # 主程序
