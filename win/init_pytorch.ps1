@@ -1,4 +1,4 @@
-# 设置错误处理
+﻿# 设置错误处理
 $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

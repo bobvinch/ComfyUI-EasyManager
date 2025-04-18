@@ -1,4 +1,4 @@
-$OutputEncoding = [System.Text.Encoding]::UTF8
+﻿$OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # 设置错误处理
 $ErrorActionPreference = "Stop"
@@ -51,6 +51,72 @@ if (-not $envExists) {
 # 激活环境
 Write-Host "🚀 激活 Python 环境..." -ForegroundColor Cyan
 
-# 启动ComfyUI
-Write-Host "🚀 启动ComfyUI" -ForegroundColor Green
-& $condaPythonPath "$COMFY_DIR\main.py" --listen 0.0.0.0 --port $PORT
+Write-Host "正在启动 ComfyUI" -ForegroundColor Green
+
+# 创建日志文件
+$logFile = "comfy.log"
+$errorLogFile = "comfy_error.log"
+New-Item -Path $logFile -ItemType File -Force | Out-Null
+New-Item -Path $errorLogFile -ItemType File -Force | Out-Null
+
+Write-Host "创建日志文件完成" -ForegroundColor Cyan
+
+# 启动进程并捕获所有输出
+$process = Start-Process -FilePath $condaPythonPath `
+    -ArgumentList "$COMFY_DIR\main.py", "--listen", "0.0.0.0", "--port", "$PORT" `
+    -NoNewWindow -PassThru `
+    -RedirectStandardOutput $logFile `
+    -RedirectStandardError $errorLogFile
+
+Write-Host "进程已启动，开始监控日志..." -ForegroundColor Cyan
+
+$timeout = 60
+$startTime = Get-Date
+$serverStarted = $false
+
+while (-not $serverStarted -and ((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+    # 读取标准输出和错误输出
+    $stdoutContent = Get-Content $logFile -ErrorAction SilentlyContinue
+    $stderrContent = Get-Content $errorLogFile -ErrorAction SilentlyContinue
+
+    # 合并两个输出
+    $allContent = @()
+    if ($stdoutContent) { $allContent += $stdoutContent }
+    if ($stderrContent) { $allContent += $stderrContent }
+
+    foreach ($line in $allContent) {
+        Write-Host "读取到日志: $line" -ForegroundColor DarkGray
+
+        if ($line -match "To see the GUI go to: http") {
+            $serverStarted = $true
+            Write-Host "检测到服务器启动成功" -ForegroundColor Green
+            Start-Sleep -Seconds 2
+
+            try {
+                Write-Host "尝试打开浏览器..." -ForegroundColor Cyan
+                Start-Process "http://localhost:$PORT"
+                Write-Host "浏览器启动成功" -ForegroundColor Green
+            } catch {
+                Write-Host "打开浏览器失败: $_" -ForegroundColor Red
+            }
+            break
+        }
+    }
+
+    if (-not $serverStarted) {
+        Start-Sleep -Milliseconds 500
+    }
+}
+
+if (-not $serverStarted) {
+    Write-Host "启动超时，最后的日志内容：" -ForegroundColor Red
+    Get-Content $logFile | ForEach-Object { Write-Host "stdout: $_" -ForegroundColor Yellow }
+    Get-Content $errorLogFile | ForEach-Object { Write-Host "stderr: $_" -ForegroundColor Red }
+}
+
+# 清理日志文件
+Remove-Item $logFile -ErrorAction SilentlyContinue
+Remove-Item $errorLogFile -ErrorAction SilentlyContinue
+
+# 等待进程结束
+$process | Wait-Process
