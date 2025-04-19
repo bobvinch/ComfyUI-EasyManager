@@ -361,7 +361,8 @@ function Get-PyTorchVersion {
 
 function Install-PyTorch {
     param (
-        [string]$cudaVersion
+        [string]$cudaVersion,
+        [Boolean]$reInstall = $false
     )
 
     try {
@@ -370,6 +371,11 @@ function Install-PyTorch {
 
         if ($cudaVersion) {
             Write-Host "⚙️ 正在安装CUDA版本的PyTorch..."
+
+            if ($reInstall)
+            {
+                conda remove pytorch torchvision torchaudio -y
+            }
 
             Write-Host "📦 检测到CUDA版本: $cudaVersion"
             # 自动版本
@@ -475,7 +481,7 @@ try {
 
         if ($cudaVersion -and -not $pytorch.IsCuda) {
             Write-Host "⚠️ 检测到CUDA但当前为CPU版本，需要重新安装"
-            Install-PyTorch -cudaVersion $cudaVersion
+            Install-PyTorch -cudaVersion $cudaVersion -reInstall $true
         }
         elseif (-not $cudaVersion -and $pytorch.IsCuda) {
             Write-Host "⚠️ 未检测到CUDA但当前为CUDA版本，需要重新安装"
