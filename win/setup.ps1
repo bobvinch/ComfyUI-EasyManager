@@ -226,65 +226,7 @@ function Install-CondaEnvironment {
     }
 }
 
-
-try {
-    Write-Host "============================"
-    Write-Host "🔄 从远程仓库克隆应用到本地"
-    Write-Host "============================"
-
-    # 判断ComfyUI目录是否存在
-    if (-not (Test-Path $COMFY_DIR)) {
-        Write-Host "🔄 从远程仓库克隆应用到本地"
-        git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git $COMFY_DIR
-    }
-    else {
-        Write-Host "⚠️ ComfyUI已存在（在源目录或目标目录中），跳过克隆步骤"
-    }
-
-
-
-    # 初始化Conda环境
-    Install-CondaEnvironment
-
-
-    # 激活环境
-    Write-Host "🔄 激活 Python 环境..."
-
-    # 安装PyTorch
-    Write-Host "🔄 安装PyTorch..."
-    .\init_pytorch.ps1
-
-
-    # 安装ComfyUI及节点的环境依赖
-    .\install_requirements.ps1
-
-
-    # 处理自定义节点
-    Push-Location (Join-Path $COMFY_DIR "custom_nodes")
-
-    # 使用Convert-FromToml函数解析TOML文件
-    $reposFile = Join-Path $ROOT_DIR "repos.toml"
-    $repos = Convert-FromToml $reposFile
-
-    # 安装节点
-    foreach ($repo in $repos.repos) {
-        # 移除 .git 后缀获取仓库名
-        $repoName = Split-Path $repo.url -Leaf
-        $repoName = $repoName -replace '\.git$', ''
-
-        Write-Host "🔄 安装节点: $repoName" -ForegroundColor Cyan
-
-        if (-not (Test-Path $repoName)) {
-            git clone $repo.url
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "❌ 仓库克隆失败: $repoName" -ForegroundColor Red
-                throw "仓库克隆失败: $repoName"
-            }
-        }
-    }
-    Pop-Location
-
-
+function Install_Aria2 {
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host "🔄 开始安装多线程下载工具" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
@@ -359,12 +301,70 @@ try {
             throw "aria2c 安装失败"
         }
     }
+}
 
-    # 下载模型
-    Push-Location $ROOT_DIR
+
+try {
+    Write-Host "============================"
+    Write-Host "🔄 从远程仓库克隆应用到本地"
+    Write-Host "============================"
+
+    # 判断ComfyUI目录是否存在
+    if (-not (Test-Path $COMFY_DIR)) {
+        Write-Host "🔄 从远程仓库克隆应用到本地"
+        git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git $COMFY_DIR
+    }
+    else {
+        Write-Host "⚠️ ComfyUI已存在（在源目录或目标目录中），跳过克隆步骤"
+    }
+
+
+
+    # 初始化Conda环境
+    Install-CondaEnvironment
+
+
+    # 激活环境
+    Write-Host "🔄 激活 Python 环境..."
+
+    # 安装PyTorch
+    Write-Host "🔄 安装PyTorch..."
+    .\init_pytorch.ps1
+
+
+    # 安装ComfyUI及节点的环境依赖
+    .\install_requirements.ps1
+
+
+    # 处理自定义节点
+    Push-Location (Join-Path $COMFY_DIR "custom_nodes")
+
+    # 使用Convert-FromToml函数解析TOML文件
+    $reposFile = Join-Path $ROOT_DIR "repos.toml"
+    $repos = Convert-FromToml $reposFile
+
+    # 安装节点
+    foreach ($repo in $repos.repos) {
+        # 移除 .git 后缀获取仓库名
+        $repoName = Split-Path $repo.url -Leaf
+        $repoName = $repoName -replace '\.git$', ''
+
+        Write-Host "🔄 安装节点: $repoName" -ForegroundColor Cyan
+
+        if (-not (Test-Path $repoName)) {
+            git clone $repo.url
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ 仓库克隆失败: $repoName" -ForegroundColor Red
+                throw "仓库克隆失败: $repoName"
+            }
+        }
+    }
+
 
     # 使用公共函数解析TOML
     $modelsFile = Join-Path $ROOT_DIR "models.toml"
+
+
     Write-Host "开始解析模型配置: $modelsFile" -ForegroundColor Cyan
 
     try {
@@ -377,6 +377,9 @@ try {
         Write-Host "模型配置解析出现问题，使用默认空配置" -ForegroundColor Yellow
     }
     if ($models -and $models.models -and $models.models.Count -gt 0) {
+        # 安装aria2
+        Install_Aria2
+
         foreach ($model in $models.models) {
             Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
             $targetDir = Join-Path $COMFY_DIR $model.dir
@@ -400,8 +403,6 @@ try {
             }
         }
     }
-
-    Pop-Location
 
     # 安装huggingface仓库
     Write-Host "🚀 安装huggingface仓库..." -ForegroundColor Cyan
