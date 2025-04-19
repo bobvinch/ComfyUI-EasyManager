@@ -374,7 +374,14 @@ function Install-PyTorch {
 
             if ($reInstall)
             {
-                conda remove pytorch torchvision torchaudio -y
+                Write-Host "📦 正在卸载已安装的PyTorch..."
+                conda deactivate
+                conda env remove -p "$EnvPath" -y
+
+                Write-Host "🧹 清理 conda 缓存..."
+                conda clean --all -y
+
+                Initialize-Environment
             }
 
             Write-Host "📦 检测到CUDA版本: $cudaVersion"
@@ -385,7 +392,8 @@ function Install-PyTorch {
                 torchaudio `
                 numpy `
                 pandas `
-                -p $envPath -c pytorch -c nvidia -y
+                pytorch-cuda=$cudaV `
+                -p $envPath -c nvidia -c pytorch  -y
 
             # 获取匹配的版本信息
 #            $versionInfo = Get-PyTorchVersion -cudaVersion $cudaVersion
@@ -453,12 +461,12 @@ try {
     Write-Host "============================"
     Write-Host "🚀 PyTorch 自动初始化工具"
     Write-Host "============================"
-
+    # 初始化环境并验证
+    $envInitialized = Initialize-Environment
     # 配置镜像源
     Set-CondaMirrors
 
-    # 初始化环境并验证
-    $envInitialized = Initialize-Environment
+
     if (-not $envInitialized) {
         throw "环境初始化失败，脚本终止"
     }
