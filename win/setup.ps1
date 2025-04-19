@@ -137,22 +137,32 @@ function Update-EnvPath {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
+function Install-Conda {
+    Write-Host "🔄 安装 Miniconda..."
+    $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+    $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
+
+    Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
+    Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
+    Remove-Item $INSTALLER_PATH
+
+    # 初始化 conda
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
+
+
 function Install-CondaEnvironment {
     # 检查 Miniconda 是否已安装
     if (-not (Test-Path $CONDA_PATH)) {
-        Write-Host "🔄 安装 Miniconda..."
-        $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
-        $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
-
-        Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
-        Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
-        Remove-Item $INSTALLER_PATH
-
-        # 初始化 conda
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Install-Conda
     }
-    else {
-        Write-Host "✅ Miniconda 已安装"
+
+    # 验证conda命令是否可用
+    $condaCommand = Get-Command conda -ErrorAction SilentlyContinue
+    if ($null -eq $condaCommand) {
+        Write-Host "❌ Conda命令不可用，请检查安装" -ForegroundColor Red
+        Install-Conda
     }
 
     # 检查环境是否存在
