@@ -172,7 +172,7 @@ function Install-Requirements {
             $current = 0
             try {
                 if ($PIP_MIRROR) {
-                    & $condaPipPath install $toInstall -i $PIP_MIRROR  --progress-bar on
+                    & $condaPipPath install $toInstall -i $PIP_MIRROR --no-warn-script-location  --progress-bar on
                     # 使用自定义镜像源
 #                    $toInstall | ForEach-Object {
 #                        $current++
@@ -183,7 +183,7 @@ function Install-Requirements {
 #                    }
                 } else {
 
-                    & $condaPipPath install $toInstall --no-cache-dir --progress-bar on
+                    & $condaPipPath install $toInstall --no-cache-dir --no-warn-script-location --progress-bar on
 #                    # 使用默认镜像源
 #                    $toInstall | ForEach-Object {
 #                        $current++
@@ -427,11 +427,13 @@ function Install-CustomNodeRequirements {
 function Test-DependencyConflicts {
     Write-Host "🔍 检查依赖冲突..." -ForegroundColor Cyan
 
+    $noConflictsOutput="No broken requirements found."
+
     # 执行 pip check 并捕获输出
     $checkOutput = & $condaPipPath check 2>&1
 
     # 如果没有输出，说明没有依赖问题
-    if (-not $checkOutput) {
+    if (-not $checkOutput -or $checkOutput -eq $noConflictsOutput) {
         Write-Host "✅ 所有依赖关系正常" -ForegroundColor Green
         return
     }
@@ -485,7 +487,7 @@ function Test-DependencyConflicts {
 
         # 最终检查
         $finalCheck = & $condaPipPath check 2>&1
-        if ($finalCheck -match "No broken requirements found." -or -not $finalCheck) {
+        if ($finalCheck -match $noConflictsOutput -or -not $finalCheck) {
             Write-Host "✨ 所有依赖问题已修复" -ForegroundColor Green
         }
         else {
