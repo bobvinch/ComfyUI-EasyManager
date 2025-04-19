@@ -37,6 +37,20 @@ $COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
 $target = "$envPath\Lib\site-packages"
 $CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
 
+# 自动检测代理
+$proxyEnabled = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyEnable
+$sysProxy = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyServer
+
+if ($proxyEnabled -eq 1 -and $sysProxy) {
+    $env:http_proxy = "http://$sysProxy"
+    $env:https_proxy = "http://$sysProxy"
+    Write-Host "✅ 已启用系统代理: http://$sysProxy" -ForegroundColor Green
+} elseif (-not $proxyEnabled) {
+    Write-Host "⚠️ 系统代理未启用" -ForegroundColor Yellow
+} else {
+    Write-Host "⚠️ 未检测到有效的代理设置" -ForegroundColor Yellow
+}
+
 function Install-CondaEnvironment {
     # 检查 Miniconda 是否已安装
     if (-not (Test-Path $CONDA_PATH)) {
@@ -432,6 +446,8 @@ function Test-DependencyConflicts {
     # 执行 pip check 并捕获输出
     $checkOutput = & $condaPipPath check 2>&1
 
+    Write-Host "🔍 检测依赖冲突的检查结果输出："$checkOutput
+
     # 如果没有输出，说明没有依赖问题
     if (-not $checkOutput -or $checkOutput -eq $noConflictsOutput) {
         Write-Host "✅ 所有依赖关系正常" -ForegroundColor Green
@@ -498,6 +514,65 @@ function Test-DependencyConflicts {
     else {
         Write-Host "✨ 未检测到需要修复的依赖" -ForegroundColor Green
     }
+}
+
+# 安装用户自定义依赖
+function Install-UserDefinedRequirements {
+    if(Test-Path $configFile){
+        $config = Convert-FromToml $configFile
+        #将packages里的包，全部添加到toInstall中
+        if ($config.packages) {
+            $config.packages | Get-Member -MemberType NoteProperty | ForEach-Object {
+                $packageName = $_.Name
+                $versionString = $config.packages.$packageName
+                #判断是否已经安装和安装的版本是否一致
+                $isInstalled =$false
+                $versionOld = ''
+                try
+                {
+                    $installedInfo = & $condaPipPath show $packageName 2>$null
+                    $installedVersion = ($installedInfo | Select-String "^Version:\s*(.+)$").Matches.Groups[1].Value
+                    if ($installedVersion) {
+                        $isInstalled = $true
+                        $versionOld = $installedVersion
+                    }
+                    else {
+                        $isInstalled = $false
+                    }
+                }
+                catch
+                {
+                    $isInstalled = $false
+                }
+
+                Write-Host "📦 包信息: "$packageName"安装状态：" $isInstalled
+
+                if ($versionString) {
+                    # version格式是sympy==1.13.1或者sympy>=1.13.1格式，需要处理获取纯的版本号
+                    $versionObj = Get-PackageVersionInfo -VersionString $versionString
+                    $versionNew = $versionObj.Version
+                    $needUpdate =Test-PackageUpgradeNeeded -CurrentVersion $versionOld -VersionRequirement $versionString
+
+                    if($isInstalled -and -not $needUpdate){
+                        Write-Host "📦 包已经安装，且版本一致，跳过安装: 包名: $packageName, 版本: $versionNew" -ForegroundColor Green
+                        return
+                    }
+                    # 强制更新
+                    Write-Host "📦 正在强制更新安装包: 包名: $packageName,旧版本:$versionOld, 新版本: $versionNew" -ForegroundColor Yellow
+                    & $condaPipPath uninstall $packageName --yes
+                    & $condaPipPath install $versionString --target $target --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                } else {
+                    if($isInstalled){
+                        Write-Host "📦 包已经安装，跳过安装: 包名: $packageName" -ForegroundColor Green
+                        return
+                    }
+                    Write-Host "📦 正在安装包: 包名: $packageName" -ForegroundColor Yellow
+                    & $condaPipPath install $packageName --target $target --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                }
+            }
+        }
+    }
+
 }
 
 
@@ -596,57 +671,10 @@ try {
     # 检查依赖冲突
     Test-DependencyConflicts
 
-    #将packages里的包，全部添加到toInstall中
-    if ($config.packages) {
-        $config.packages | Get-Member -MemberType NoteProperty | ForEach-Object {
-            $packageName = $_.Name
-            $versionString = $config.packages.$packageName
-            #判断是否已经安装和安装的版本是否一致
-            $isInstalled =$false
-            $versionOld = ''
-            try
-            {
-                $installedInfo = & $condaPipPath show $packageName 2>$null
-                $installedVersion = ($installedInfo | Select-String "^Version:\s*(.+)$").Matches.Groups[1].Value
-                if ($installedVersion) {
-                    $isInstalled = $true
-                    $versionOld = $installedVersion
-                }
-                else {
-                    $isInstalled = $false
-                }
-            }
-            catch
-            {
-                $isInstalled = $false
-            }
+    # 安装自定义依赖
+    Install-UserDefinedRequirements
 
-            Write-Host "📦 包信息: "$packageName"安装状态：" $isInstalled
 
-            if ($versionString) {
-                # version格式是sympy==1.13.1或者sympy>=1.13.1格式，需要处理获取纯的版本号
-                $versionObj = Get-PackageVersionInfo -VersionString $versionString
-                $versionNew = $versionObj.Version
-                $needUpdate =Test-PackageUpgradeNeeded -CurrentVersion $versionOld -VersionRequirement $versionString
-
-                if($isInstalled -and -not $needUpdate){
-                    Write-Host "📦 包已经安装，且版本一致，跳过安装: 包名: $packageName, 版本: $versionNew" -ForegroundColor Green
-                    return
-                }
-                # 强制更新
-                Write-Host "📦 正在强制更新安装包: 包名: $packageName,旧版本:$versionOld, 新版本: $versionNew" -ForegroundColor Yellow
-                & $condaPipPath uninstall $packageName --yes
-                & $condaPipPath install $versionString --target $target --force-reinstall --upgrade --no-cache-dir --progress-bar on
-            } else {
-                if($isInstalled){
-                    Write-Host "📦 包已经安装，跳过安装: 包名: $packageName" -ForegroundColor Green
-                    return
-                }
-                Write-Host "📦 正在安装包: 包名: $packageName" -ForegroundColor Yellow
-                & $condaPipPath install $packageName --target $target --force-reinstall --upgrade --no-cache-dir --progress-bar on
-            }
-        }
-    }
     Write-Host "✅ 依赖安装完成" -ForegroundColor Green
 
 

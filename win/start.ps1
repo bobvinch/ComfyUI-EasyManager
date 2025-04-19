@@ -90,6 +90,19 @@ while (-not $serverStarted) {
             # 使用以下方式输出，避免编码问题
             [Console]::WriteLine($line)
 
+            # 检测模块缺失错误
+            if ($line -match "No module named '([^']+)'") {
+                $missingModule = $matches[1]
+                Write-Host "检测到缺失模块: $missingModule" -ForegroundColor Yellow
+                try {
+                    Write-Host "正在尝试安装模块: $missingModule" -ForegroundColor Cyan
+                    & $condaPipPath install --quiet $missingModule
+                    Write-Host "模块安装成功: $missingModule" -ForegroundColor Green
+                } catch {
+                    Write-Host "模块安装失败: $_" -ForegroundColor Red
+                }
+            }
+
             if ($line -match "To see the GUI go to: http") {
                 $serverStarted = $true
                 Write-Host "检测到服务器启动成功" -ForegroundColor Green

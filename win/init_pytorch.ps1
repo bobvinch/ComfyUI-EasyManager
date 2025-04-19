@@ -16,6 +16,20 @@ $envName = "comfyui"
 Write-Host "📂 脚本根目录: $ROOT_DIR"
 Write-Host "📂 环境完整路径: $envPath"
 
+# 检查代理设置
+$proxyEnabled = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyEnable
+$sysProxy = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyServer
+
+if ($proxyEnabled -eq 1 -and $sysProxy) {
+    $env:http_proxy = "http://$sysProxy"
+    $env:https_proxy = "http://$sysProxy"
+    Write-Host "✅ 已启用系统代理: http://$sysProxy" -ForegroundColor Green
+} elseif (-not $proxyEnabled) {
+    Write-Host "⚠️ 系统代理未启用" -ForegroundColor Yellow
+} else {
+    Write-Host "⚠️ 未检测到有效的代理设置" -ForegroundColor Yellow
+}
+
 function Initialize-Environment {
     try {
         # 确保目录存在
