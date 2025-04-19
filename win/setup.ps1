@@ -138,16 +138,49 @@ function Update-EnvPath {
 }
 
 function Install-Conda {
-    Write-Host "🔄 安装 Miniconda..."
+    Write-Host "⏳ 安装 Miniconda..."
     $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
     $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
 
-    Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
-    Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
-    Remove-Item $INSTALLER_PATH
+    try {
+        Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
+        Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
+        Remove-Item $INSTALLER_PATH
 
-    # 初始化 conda
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        # 更新环境变量
+        $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path = "$machinePath;$userPath"
+
+        # 添加 Conda 相关路径
+        $condaScripts = Join-Path $CONDA_PATH "Scripts"
+        $env:Path = "$CONDA_PATH;$condaScripts;$env:Path"
+
+        # 初始化 Conda for PowerShell
+        $initScript = Join-Path $CONDA_PATH "shell\condabin\conda-hook.ps1"
+        if (Test-Path $initScript) {
+            & $initScript
+            conda init powershell
+        }
+
+        # 验证安装
+        $retryCount = 0
+        while ($retryCount -lt 3) {
+            if (Get-Command conda -ErrorAction SilentlyContinue) {
+                Write-Host "✅ Conda 安装成功并已初始化" -ForegroundColor Green
+                return $true
+            }
+            Start-Sleep -Seconds 2
+            $retryCount++
+        }
+
+        Write-Host "⚠️ Conda 已安装但需要重启 PowerShell 才能使用" -ForegroundColor Yellow
+        return $false
+    }
+    catch {
+        Write-Host "❌ Conda 安装失败: $_" -ForegroundColor Red
+        return $false
+    }
 }
 
 
