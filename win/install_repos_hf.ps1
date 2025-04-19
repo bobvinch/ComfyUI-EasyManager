@@ -29,12 +29,7 @@ $tools = @{
     }
 }
 
-foreach ($tool in $tools.Keys) {
-    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
-        Write-Host "⚙️ 安装 $tool..." -ForegroundColor Cyan
-        & $tools[$tool]
-    }
-}
+
 
 # 读取 TOML 文件
 $REPOS_FILE = Join-Path $ROOT_DIR "repos_hf.toml"
@@ -43,6 +38,14 @@ if (-not (Test-Path $REPOS_FILE)) {
 }
 else
 {
+    # 检查并安装必要工具
+    foreach ($tool in $tools.Keys) {
+        if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            Write-Host "⚙️ 安装 $tool..." -ForegroundColor Cyan
+            & $tools[$tool]
+        }
+    }
+
     $repos = Convert-FromToml $REPOS_FILE
 
     # 配置 git 凭证
