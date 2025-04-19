@@ -348,6 +348,37 @@ check_dependencies_conflicts() {
 }
 
 
+function InitializePythonEnv() {
+    # 检查 Miniconda 是否已安装
+    if [ ! -d "$CONDA_PATH" ]; then
+        echo "🚀 安装 Miniconda..."
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+        bash miniconda.sh -b -p $CONDA_PATH
+        rm miniconda.sh
+
+        # 初始化 conda
+        source "$CONDA_PATH/etc/profile.d/conda.sh"
+        conda init bash
+    else
+        echo "✅ Miniconda 已安装"
+        source "$CONDA_PATH/etc/profile.d/conda.sh"
+    fi
+
+    # 检查环境是否存在
+    if ! conda env list | grep -q "$ENV_PATH"; then
+        echo "🚀 创建新的 Python 环境. 3.10.."
+        echo "📋 当前的 channels 配置："
+        conda config --show channels
+        conda create -p "$ENV_PATH" python=3.10 -y --override-channels -c defaults
+        echo "✅ Python 环境创建完成"
+    else
+        echo "✅ Python 环境已存在"
+    fi
+}
+
+# 初始化 Python 环境
+InitializePythonEnv
+
 # 初始化 conda
 source "$CONDA_PATH/etc/profile.d/conda.sh"
 conda init bash
