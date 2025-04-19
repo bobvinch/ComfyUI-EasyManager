@@ -10,21 +10,78 @@ Write-Host "🚀 设置默认镜像源为阿里云镜像..." -ForegroundColor Cy
 $PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
 $configFile = Join-Path $ROOT_DIR "config.toml"
-$config = Convert-FromToml $configFile
+
+if(Test-Path $configFile){
+    $config = Convert-FromToml $configFile
+    # 配置pip镜像源
+    if ($config.resources -and $config.resources.pip_mirror) {
+        Write-Host "🔧 检测到配置的pip镜像源，正在设置: $($config.resources.pip_mirror)" -ForegroundColor Cyan
+        & $condaPipPath config set global.index-url $config.resources.pip_mirror
+        $PIP_MIRROR = $config.resources.pip_mirror
+    } else {
+        Write-Host "ℹ️ 未配置pip镜像源，使用默认源:$PIP_MIRROR" -ForegroundColor Yellow
+    }
+}
+else
+{
+    Write-Host "ℹ️ 未找到配置文件: $configFile" -ForegroundColor Yellow
+}
+
+
 $condaPipPath = "$ENV_PATH\Scripts\pip.exe"
 $condaPythonPath = "$ENV_PATH\python.exe"
-# 配置pip镜像源
-if ($config.resources -and $config.resources.pip_mirror) {
-    Write-Host "🔧 检测到配置的pip镜像源，正在设置: $($config.resources.pip_mirror)" -ForegroundColor Cyan
-    & $condaPipPath config set global.index-url $config.resources.pip_mirror
-    $PIP_MIRROR = $config.resources.pip_mirror
-} else {
-    Write-Host "ℹ️ 未配置pip镜像源，使用默认源:$PIP_MIRROR" -ForegroundColor Yellow
-}
+
 $ROOT_DIR = $PSScriptRoot
 $envPath = Join-Path $ROOT_DIR "envs\comfyui"
 $COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
 $target = "$envPath\Lib\site-packages"
+$CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
+
+function Install-CondaEnvironment {
+    # 检查 Miniconda 是否已安装
+    if (-not (Test-Path $CONDA_PATH)) {
+        Write-Host "🔄 安装 Miniconda..."
+        $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+        $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
+
+        Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
+        Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
+        Remove-Item $INSTALLER_PATH
+
+        # 初始化 conda
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    }
+    else {
+        Write-Host "✅ Miniconda 已安装"
+    }
+
+    # 检查环境是否存在
+    $envExists = conda env list | Select-String -Pattern ([regex]::Escape($ENV_PATH))
+    if (-not $envExists) {
+        Write-Host "🔄 创建新的 Python 环境 3.10..."
+        Write-Host "🔄 当前的 channels 配置："
+        conda config --show channels
+        # 配置 conda 镜像源
+        Write-Host "� 配置 conda 镜像源..." -ForegroundColor Cyan
+        # 先删除所有已有的镜像源配置
+        #        conda config --remove-key channels
+        # 添加阿里云镜像源
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
+        #        conda config --set show_channel_urls yes
+        #        Write-Host " 配置 conda 镜像源完成" -ForegroundColor Green
+
+        conda config --show channels
+        conda create -p $ENV_PATH python=3.10 -y --override-channels -c defaults
+        Write-Host "✅ Python 环境创建完成"
+        Write-Host "✅ Python 及pytorch 环境创建完成"
+    }
+    else {
+        Write-Host "✅ Python 环境已存在"
+    }
+}
 
 # 定义依赖安装函数
 function Install-Requirements {
@@ -43,7 +100,6 @@ function Install-Requirements {
     # 获取已安装的包列表
     Write-Host "🔍 获取已安装包列表..." -ForegroundColor Cyan
     $installedPackages = @{}
-    $condaPipPath = "$envPath\Scripts\pip.exe"
     & $condaPipPath list --format=freeze | ForEach-Object {
         if ($_ -match '^([^=]+)==.*$') {
             $installedPackages[$Matches[1]] = $true
@@ -116,23 +172,26 @@ function Install-Requirements {
             $current = 0
             try {
                 if ($PIP_MIRROR) {
+                    & $condaPipPath install $toInstall -i $PIP_MIRROR --no-warn-script-location  --progress-bar on
                     # 使用自定义镜像源
-                    $toInstall | ForEach-Object {
-                        $current++
-                        $percent = [math]::Round(($current / $total) * 100, 1)
-                        Write-Host "[$current/$total] ($percent%) 正在安装: $_" -ForegroundColor Yellow
-                        & $condaPipPath install -i $PIP_MIRROR $_ --target "$envPath\Lib\site-packages" --progress-bar on
-                        Write-Host ""  # 添加空行以提高可读性
-                    }
+#                    $toInstall | ForEach-Object {
+#                        $current++
+#                        $percent = [math]::Round(($current / $total) * 100, 1)
+#                        Write-Host "[$current/$total] ($percent%) 正在安装: $_" -ForegroundColor Yellow
+#                        & $condaPipPath install -i $PIP_MIRROR $_ --target "$envPath\Lib\site-packages" --progress-bar on
+#                        Write-Host ""  # 添加空行以提高可读性
+#                    }
                 } else {
-                    # 使用默认镜像源
-                    $toInstall | ForEach-Object {
-                        $current++
-                        $percent = [math]::Round(($current / $total) * 100, 1)
-                        Write-Host "[$current/$total] ($percent%) 正在安装: $_" -ForegroundColor Yellow
-                        & $condaPipPath install $_ --target "$envPath\Lib\site-packages" --no-cache-dir --progress-bar on
-                        Write-Host ""  # 添加空行以提高可读性
-                    }
+
+                    & $condaPipPath install $toInstall --no-cache-dir --no-warn-script-location --progress-bar on
+#                    # 使用默认镜像源
+#                    $toInstall | ForEach-Object {
+#                        $current++
+#                        $percent = [math]::Round(($current / $total) * 100, 1)
+#                        Write-Host "[$current/$total] ($percent%) 正在安装: $_" -ForegroundColor Yellow
+#                        & $condaPipPath install $_ --target "$envPath\Lib\site-packages" --no-cache-dir --progress-bar on
+#                        Write-Host ""  # 添加空行以提高可读性
+#                    }
                 }
                 Write-Host "✅ 所有依赖安装完成" -ForegroundColor Green
             } catch {
@@ -368,11 +427,13 @@ function Install-CustomNodeRequirements {
 function Test-DependencyConflicts {
     Write-Host "🔍 检查依赖冲突..." -ForegroundColor Cyan
 
+    $noConflictsOutput="No broken requirements found."
+
     # 执行 pip check 并捕获输出
     $checkOutput = & $condaPipPath check 2>&1
 
     # 如果没有输出，说明没有依赖问题
-    if (-not $checkOutput) {
+    if (-not $checkOutput -or $checkOutput -eq $noConflictsOutput) {
         Write-Host "✅ 所有依赖关系正常" -ForegroundColor Green
         return
     }
@@ -421,23 +482,12 @@ function Test-DependencyConflicts {
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "⚠️ 安装 $installSpec 失败" -ForegroundColor Yellow
 
-                # 禁用安装兼容版本
-                #                $versions = & $condaPipPath index versions $package.Name 2>&1 |
-                #                        Select-String -Pattern "\((.*?)\)" |
-                #                        ForEach-Object { $_.Matches.Groups[1].Value } |
-                #                        Where-Object { $_ -notmatch "yanked" } |
-                #                        Select-Object -First 1
-                #
-                #                if ($versions) {
-                #                    Write-Host "📦 尝试安装兼容版本: $($package.Name)==$versions" -ForegroundColor Cyan
-                #                    & $condaPipPath install "$($package.Name)==$versions" --target $target --progress-bar on
-                #                }
             }
         }
 
         # 最终检查
         $finalCheck = & $condaPipPath check 2>&1
-        if ($finalCheck -match "No broken requirements found." -or -not $finalCheck) {
+        if ($finalCheck -match $noConflictsOutput -or -not $finalCheck) {
             Write-Host "✨ 所有依赖问题已修复" -ForegroundColor Green
         }
         else {
@@ -460,6 +510,11 @@ try {
         Write-Host "❌ ComfyUI目录不存在: $COMFY_DIR" -ForegroundColor Red
         exit 1
     }
+    # 安装Conda环境
+    Install-CondaEnvironment
+
+    # 初始化pytorch
+    ./init_pytorch.ps1
 
     # 切换到ComfyUI目录
     Set-Location $COMFY_DIR -ErrorAction Stop

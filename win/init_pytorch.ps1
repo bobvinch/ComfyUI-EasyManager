@@ -350,6 +350,8 @@ function Install-PyTorch {
                 pytorch `
                 torchvision `
                 torchaudio `
+                numpy `
+                pandas `
                 -p $envPath -c pytorch -c nvidia -y
 
             # 获取匹配的版本信息
@@ -378,6 +380,8 @@ function Install-PyTorch {
                 pytorch `
                 torchvision `
                 torchaudio `
+                numpy `
+                pandas `
                 cpuonly `
                 -p $envPath -c pytorch -y
 
@@ -470,8 +474,9 @@ try {
 
     Write-Host "✅ PyTorch初始化完成！"
     Write-Host "🔧 环境路径: $envPath"
+
 }
 catch {
     Write-Host "❌ 错误：$($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+    throw
 }

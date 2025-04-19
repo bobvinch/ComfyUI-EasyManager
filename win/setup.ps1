@@ -137,27 +137,7 @@ function Update-EnvPath {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-
-try {
-    Write-Host "============================"
-    Write-Host "🔄 从远程仓库克隆应用到本地"
-    Write-Host "============================"
-
-    # 判断ComfyUI目录是否存在
-    if (-not (Test-Path $COMFY_DIR)) {
-        Write-Host "🔄 从远程仓库克隆应用到本地"
-        git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git $COMFY_DIR
-    }
-    else {
-        Write-Host "⚠️ ComfyUI已存在（在源目录或目标目录中），跳过克隆步骤"
-    }
-
-    Write-Host "============================"
-    Write-Host "🔄 开始安装多线程下载工具"
-    Write-Host "============================"
-
-
-
+function Install-CondaEnvironment {
     # 检查 Miniconda 是否已安装
     if (-not (Test-Path $CONDA_PATH)) {
         Write-Host "🔄 安装 Miniconda..."
@@ -184,14 +164,14 @@ try {
         # 配置 conda 镜像源
         Write-Host "� 配置 conda 镜像源..." -ForegroundColor Cyan
         # 先删除所有已有的镜像源配置
-#        conda config --remove-key channels
+        #        conda config --remove-key channels
         # 添加阿里云镜像源
-#        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-#        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-#        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
-#        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
-#        conda config --set show_channel_urls yes
-#        Write-Host " 配置 conda 镜像源完成" -ForegroundColor Green
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
+        #        conda config --set show_channel_urls yes
+        #        Write-Host " 配置 conda 镜像源完成" -ForegroundColor Green
 
         conda config --show channels
         conda create -p $ENV_PATH python=3.10 -y --override-channels -c defaults
@@ -201,6 +181,28 @@ try {
     else {
         Write-Host "✅ Python 环境已存在"
     }
+}
+
+
+try {
+    Write-Host "============================"
+    Write-Host "🔄 从远程仓库克隆应用到本地"
+    Write-Host "============================"
+
+    # 判断ComfyUI目录是否存在
+    if (-not (Test-Path $COMFY_DIR)) {
+        Write-Host "🔄 从远程仓库克隆应用到本地"
+        git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git $COMFY_DIR
+    }
+    else {
+        Write-Host "⚠️ ComfyUI已存在（在源目录或目标目录中），跳过克隆步骤"
+    }
+
+
+
+    # 初始化Conda环境
+    Install-CondaEnvironment
+
 
     # 激活环境
     Write-Host "🔄 激活 Python 环境..."
