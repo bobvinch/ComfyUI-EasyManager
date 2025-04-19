@@ -21,7 +21,10 @@
 git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
 ```
 进入ComfyUI-EasyManager目录下win目录,一键安装及启动:右键`setup.ps1` 使用PowerShell运行
-
+【重要】Windows需要先修改powershell的配置，允许脚本运行，否则会闪退，右键powershell以管理员权限运行，然后输入：
+```bash
+Set-ExecutionPolicy RemoteSigned
+```
 #### 仅启动
 启动ComfyUI环境：右键`start.ps1` 使用PowerShell运行
 

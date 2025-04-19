@@ -301,20 +301,43 @@ try {
         $chocoStatus = Test-ToolInstalled -ToolName 'choco'
         if (-not $chocoStatus.IsInstalled) {
             Write-Host "⚙️ 正在安装 Chocolatey..." -ForegroundColor Cyan
-            Set-ExecutionPolicy Bypass -Scope Process -Force
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-            # 刷新环境变量
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            try {
+                # 使用用户级别的执行策略
+                $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
+                Set-ExecutionPolicy Bypass -Scope CurrentUser -Force
 
-            # 验证 Chocolatey 安装
-            $chocoPath = "$env:ProgramData\chocolatey\bin\choco.exe"
-            if (Test-Path $chocoPath) {
-                Write-Host "✅ Chocolatey 安装完成" -ForegroundColor Green
-            } else {
-                Write-Host "❌ Chocolatey 安装失败" -ForegroundColor Red
-                throw "Chocolatey 安装失败"
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+
+                # 使用用户级别安装
+                $installScript = Join-Path $env:TEMP "install-choco.ps1"
+                (New-Object System.Net.WebClient).DownloadFile('https://community.chocolatey.org/install.ps1', $installScript)
+                & $installScript
+                Remove-Item $installScript -Force
+
+                # 更新用户级别的环境变量
+                $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+                $chocoPath = "$env:USERPROFILE\AppData\Local\chocolatey\bin"
+                if ($userPath -notlike "*$chocoPath*") {
+                    [System.Environment]::SetEnvironmentVariable("Path", "$userPath;$chocoPath", "User")
+                    $env:Path = "$env:Path;$chocoPath"
+                }
+
+                # 验证 Chocolatey 安装
+                $chocoExe = Join-Path $chocoPath "choco.exe"
+                if (Test-Path $chocoExe) {
+                    Write-Host "✅ Chocolatey 安装完成" -ForegroundColor Green
+                } else {
+                    Write-Host "❌ Chocolatey 安装失败" -ForegroundColor Red
+                    throw "Chocolatey 安装失败"
+                }
+
+                # 恢复原始执行策略
+                Set-ExecutionPolicy $currentPolicy -Scope CurrentUser -Force
+
+            } catch {
+                Write-Host "❌ 安装过程出错: $_" -ForegroundColor Red
+                throw $_
             }
         }
 
@@ -387,6 +410,7 @@ try {
     # 启动ComfyUI
     Write-Host "🚀 启动ComfyUI..." -ForegroundColor Green
     & "$ROOT_DIR\start.ps1" $PORT
+
 
 } catch {
     Handle-Error $_.Exception.Message

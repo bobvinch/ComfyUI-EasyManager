@@ -123,18 +123,25 @@ custom_channels:
 function Get-CudaVersion {
     try {
         # 方法1: 使用 nvidia-smi
-        $nvidiaSmi = & nvidia-smi --query-gpu=driver_version,cuda_version --format=csv,noheader 2>$null
-        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($nvidiaSmi)) {
-            $versions = $nvidiaSmi.Trim() -split ','
-            if ($versions.Count -ge 2) {
-                $driverVersion = $versions[0].Trim()
-                $cudaVersion = $versions[1].Trim()
-                Write-Host "✅ 通过 nvidia-smi 检测到:"
-                Write-Host "  驱动版本: $driverVersion"
-                Write-Host "  CUDA 版本: $cudaVersion"
-                return $cudaVersion
+        # 检查 nvidia-smi 命令是否可用
+        # 尝试执行 nvidia-smi 并捕获完整输出
+        $nvidiaSmiOutput = & nvidia-smi 2>$null
+
+        if ($LASTEXITCODE -eq 0 -and $nvidiaSmiOutput) {
+            # 逐行检查输出
+            foreach ($line in $nvidiaSmiOutput) {
+                # 使用正则表达式匹配包含 CUDA Version 的行
+                if ($line -match 'CUDA Version:\s*([\d\.]+)') {
+                    $cudaVersion = $matches[1]
+                    Write-Host "✅ 通过 nvidia-smi 检测到 CUDA 版本: $cudaVersion"
+                    return $cudaVersion
+                }
             }
+            Write-Host "⚠️ 未能在 nvidia-smi 输出中找到 CUDA 版本信息。" -ForegroundColor Yellow
+        } else {
+            Write-Host "⚠️ nvidia-smi 命令执行失败或无输出。" -ForegroundColor Yellow
         }
+
 
         # 方法2: 检查 CUDA_PATH 环境变量
         if ($env:CUDA_PATH) {
@@ -167,6 +174,12 @@ function Get-CudaVersion {
                 Write-Host "✅ 通过 nvcc 检测到 CUDA 版本: $cudaVersion"
                 return $cudaVersion
             }
+        }
+
+        if($isCudaAvailable){
+            $cudaVersion = "11.8"  # 设置默认CUDA版本
+            Write-Host "⚠️ CUDA存在，CUDA版本解析失败，使用默认版本" -ForegroundColor Yellow
+            return $cudaVersion
         }
 
         Write-Host "⚠️ 未能检测到 CUDA" -ForegroundColor Yellow
