@@ -105,7 +105,7 @@ function Install-HuggingfaceRepos {
                 $repo_name = Split-Path $repo.url -Leaf
                 $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
                 # 兼容移动硬盘运行
-                git config --global --add safe.directory $fullPath
+                git config --global --add safe.directory "$fullPath"
                 if (Test-Path (Join-Path $fullPath ".git")) {
                     Write-Host "📦 仓库已存在，尝试更新..." -ForegroundColor Cyan
                     # 更新
