@@ -12,6 +12,8 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $ROOT_DIR "tools.ps1")
 # 引入下载模型
 . (Join-Path $ROOT_DIR "download.ps1")
+# 引入Huggingface 下载
+. (Join-Path $ROOT_DIR "install_repos_hf.ps1")
 
 
 $config = @{
@@ -118,7 +120,7 @@ try {
 
     # 安装huggingface仓库
     Write-Host "🚀 安装huggingface仓库..." -ForegroundColor Cyan
-    & "$ROOT_DIR\install_repos_hf.ps1" $HF_TOKEN
+    Install-HuggingfaceRepos
 
     # 启动ComfyUI
     Write-Host "🚀 启动ComfyUI..." -ForegroundColor Green

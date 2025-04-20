@@ -26,6 +26,15 @@ function Get-ConfigFromFile {
     }
     return $config
 }
+# 获取HF_TOKEN从配置文件
+function Get-HF_TOKEN {
+    $config = Get-ConfigFromFile
+    if ($config.authorizations -and $config.authorizations.huggingface_token) {
+        return $config.authorizations.huggingface_token
+    } else {
+        return $null
+    }
+}
 
 # 函数：检查工具是否已安装
 function Test-ToolInstalled {
@@ -277,12 +286,12 @@ function Install_Aria2 {
 
 # 安装 aria2c
 
-function Start-FileWithAria2 {
+function Start-FileDownloadWithAria2 {
     param (
         [Parameter(Mandatory = $true)]
         [string]$URL,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string]$HEADER,
 
         [Parameter(Mandatory = $true)]
@@ -317,39 +326,59 @@ function Start-FileWithAria2 {
 
     # 检查文件是否已存在
     if (Test-Path $FULL_PATH) {
-        # 检查是否是Git LFS占位文件（通常小于200字节）
-        $fileSize = (Get-Item $FULL_PATH).Length
-        if ($fileSize -lt 200) {
-            Write-Host "⚠️ 发现Git LFS占位文件，删除并重新下载: $FULL_PATH" -ForegroundColor Yellow
-            Remove-Item $FULL_PATH -Force
+        # 检查是否存在.aria2c临时文件
+        $aria2cFile = "$FULL_PATH.aria2"
+        if (Test-Path $aria2cFile) {
+            Write-Host "⚠️ 发现未完成的下载任务，继续下载: $FULL_PATH" -ForegroundColor Yellow
         } else {
-            Write-Host "⚠️ 文件已存在，跳过下载: $FULL_PATH" -ForegroundColor Yellow
-            return $true
+            # 检查是否是Git LFS占位文件（通常小于200字节）
+            $fileSize = (Get-Item $FULL_PATH).Length
+            if ($fileSize -lt 200) {
+                Write-Host "⚠️ 发现Git LFS占位文件，删除并重新下载: $FULL_PATH" -ForegroundColor Yellow
+                Remove-Item $FULL_PATH -Force
+            } else {
+                Write-Host "⚠️ 文件已存在，跳过下载: $FULL_PATH" -ForegroundColor Yellow
+                return $true
+            }
         }
     }
 
     # 使用aria2c下载
     try {
-        # 构建 header 参数格式
-        $URL = "'$URL'"  # 添加单引号
-        $headerArg = "--header=`"$HEADER`""
-        $userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        # 构建基础参数列表
+        $arguments = @()
 
-        $process = Start-Process -FilePath "aria2c" -ArgumentList @(
-            "-o", $FILENAME,
-            "-d", $DOWNLOAD_DIR,
-            "-x", "16",
-            "-s", "16",
-            "--user-agent=$userAgent",
-            $headerArg,
-            $URL
-        ) -NoNewWindow -Wait -PassThru
+        # 添加基本下载参数
+        $arguments += "-o", $FILENAME
+        $arguments += "-d", $DOWNLOAD_DIR
+        $arguments += "-x", "16"
+        $arguments += "-s", "16"
+        $arguments += "--user-agent=`"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36`""
+
+        # 如果存在 Header 且不为空，则添加到参数列表（用引号包裹整个 header）
+        if (-not [string]::IsNullOrWhiteSpace($HEADER)) {
+            $arguments += "--header=`"$HEADER`""
+        }
+
+        # 添加 URL（用引号包裹）
+        $arguments += "`"$URL`""
+
+        # 输出实际执行的命令用于调试
+        Write-Host "执行命令: aria2c $($arguments -join ' ')" -ForegroundColor Yellow
+
+
+
+        $process = Start-Process -FilePath "aria2c" `
+                           -ArgumentList $arguments `
+                           -NoNewWindow `
+                           -Wait `
+                           -PassThru
 
         if ($process.ExitCode -eq 0) {
             Write-Host "✅ 下载完成: $FULL_PATH" -ForegroundColor Green
             return $true
         } else {
-            Write-Host "❌ 下载失败" -ForegroundColor Red
+            Write-Host "❌ 下载失败，退出码: $($process.ExitCode)" -ForegroundColor Red
             return $false
         }
     } catch {

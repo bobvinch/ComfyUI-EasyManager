@@ -3,7 +3,7 @@
 
 
 $ROOT_DIR = $PSScriptRoot
-
+$COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
 #  引入工具函数
 . (Join-Path $ROOT_DIR "tools.ps1")
 # 引入TOML解析函数
@@ -15,7 +15,7 @@ function Show-Usage {
     Write-Host "示例: $($MyInvocation.MyCommand.Name) 'https://example.com/model.safetensors' 'custom_name.safetensors' 'Authorization: Bearer xxx' '/path/to/download'"
 }
 
-
+# 下载用户自定义的模型
 function Start_DownloadUserConfigModels {
     # 下载模型
     # 使用公共函数解析TOML
@@ -36,15 +36,7 @@ function Start_DownloadUserConfigModels {
     }
     if ($models -and $models.models -and $models.models.Count -gt 0) {
         # 定义模型的HF_TOKEN
-        $HF_TOKEN = ""
-        $config = Get-ConfigFromFile
-        if ($config.authorizations -and $config.authorizations.huggingface_token) {
-            $HF_TOKEN = $config.authorizations.huggingface_token
-            Write-Host "🔧 检测到配置的huggingface token，已经设置: $($config.authorizations.huggingface_token)" -ForegroundColor Cyan
-        } else {
-            Write-Host "ℹ️ 未配置huggingface token，部分资源可能无效下载" -ForegroundColor Yellow
-        }
-
+        $HF_TOKEN = Get-HF_TOKEN
 
         foreach ($model in $models.models) {
             Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
@@ -67,7 +59,7 @@ function Start_DownloadUserConfigModels {
                 $params.FILENAME = $model.fileName
             }
             # 调用工具函数下载模型
-            Start-FileDownload @params
+            Start-FileDownloadWithAria2 @params
         }
     }
     else
