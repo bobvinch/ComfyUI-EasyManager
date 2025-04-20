@@ -8,21 +8,19 @@ $ProgressPreference = 'SilentlyContinue'  # 加快下载速度
 # 导入TOML解析函数
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptPath "parse_toml.ps1")
+#  引入工具函数
+. (Join-Path $ROOT_DIR "tools.ps1")
+# 引入下载模型
+. (Join-Path $ROOT_DIR "download.ps1")
 
-#HF_TOKEN
-$HF_TOKEN = ""
 
 $config = @{
     # 默认配置项
 }
 
 
-# 配置pip镜像源
-if ($config.authorizations -and $config.authorizations.huggingface_token) {
-    Write-Host "🔧 检测到配置的huggingface token，已经设置: $($config.authorizations.huggingface_token)" -ForegroundColor Cyan
-} else {
-    Write-Host "ℹ️ 未配置huggingface token，部分资源可能无效下载" -ForegroundColor Yellow
-}
+
+
 
 $ROOT_DIR = $PSScriptRoot
 # 获取脚本所在目录
@@ -56,8 +54,7 @@ if ($proxyEnabled -eq 1 -and $sysProxy) {
 }
 
 
-#  引入工具函数
-. (Join-Path $ROOT_DIR "tools.ps1")
+
 
 
 try {
@@ -116,45 +113,8 @@ try {
     }
 
 
-    # 使用公共函数解析TOML
-    $modelsFile = Join-Path $ROOT_DIR "models.toml"
-
-
-    Write-Host "开始解析模型配置: $modelsFile" -ForegroundColor Cyan
-
-    try {
-        if (Test-Path $modelsFile) {
-            $models = Convert-FromToml $modelsFile
-        } else {
-            Write-Host "未找到模型配置文件，使用默认空配置" -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Host "模型配置解析出现问题，使用默认空配置" -ForegroundColor Yellow
-    }
-    if ($models -and $models.models -and $models.models.Count -gt 0) {
-        foreach ($model in $models.models) {
-            Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
-            $targetDir = Join-Path $COMFY_DIR $model.dir
-            if (-not (Test-Path $targetDir)) {
-                New-Item -ItemType Directory -Path $targetDir -Force
-            }
-            # 修改这部分代码
-            if ($model.fileName) {
-                # 四个参数的情况：URL, 文件名, 认证头, 目标目录
-                & "$ROOT_DIR\download.ps1" `
-            "$($model.url)" `
-            "$($model.fileName)" `
-            "Authorization: Bearer $HF_TOKEN" `
-            "$targetDir"
-            } else {
-                # 三个参数的情况：URL, 认证头, 目标目录
-                & "$ROOT_DIR\download.ps1" `
-            "$($model.url)" `
-            "Authorization: Bearer $HF_TOKEN" `
-            "$targetDir"
-            }
-        }
-    }
+    # 安装普通模型
+    Start_DownloadUserConfigModels
 
     # 安装huggingface仓库
     Write-Host "🚀 安装huggingface仓库..." -ForegroundColor Cyan

@@ -30,7 +30,6 @@ $tools = @{
 }
 
 
-
 # 读取 TOML 文件
 $REPOS_FILE = Join-Path $ROOT_DIR "repos_hf.toml"
 if (-not (Test-Path $REPOS_FILE)) {
