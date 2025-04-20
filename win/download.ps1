@@ -17,6 +17,10 @@ function Show-Usage {
 
 # 下载用户自定义的模型
 function Start_DownloadUserConfigModels {
+    param (
+        [Parameter(Mandatory = $false)]
+        [Boolean]$isInteractive = $false
+    )
     # 下载模型
     # 使用公共函数解析TOML
     $modelsFile = Join-Path $ROOT_DIR "models.toml"
@@ -66,7 +70,12 @@ function Start_DownloadUserConfigModels {
     {
         Write-Host "未找到模型配置，跳过下载" -ForegroundColor Yellow
     }
+
+    if ($isInteractive) {
+        Write-Host "`n按任意键继续..." -ForegroundColor Cyan
+        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+    }
 }
 
-Start_DownloadUserConfigModels
+Start_DownloadUserConfigModels -isInteractive $true
 
