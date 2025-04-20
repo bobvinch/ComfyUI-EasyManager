@@ -10,23 +10,21 @@
 
 ## 使用方法
 
-### 参数配置
-配置文件：`config.toml`
-1. 配置huggingface的下载token： 部分huggingface 文件可能需要配置token才能下载（头像-Access Tokens,新建token，并且给token指定仓库)，具体请参考[huggingface](https://huggingface.co/models)
-![](./public/hf_token.png)
+
 ### Window一键运行
 
 【重要】Windows需要先修改powershell的配置，允许脚本运行，否则会闪退，右键powershell以管理员权限运行，然后输入：
 ```bash
 Set-ExecutionPolicy RemoteSigned
 ```
+再弹出的窗口选择“是”，然后输入Y
 克隆脚本：
 ```bash
 # 克隆脚本
 git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
 ```
 
-## 创建一个新的ComfyUI黄金
+## 创建一个新的ComfyUI
 进入ComfyUI-EasyManager目录下win目录,一键安装及启动:右键`setup.ps1` 使用PowerShell运行
 
 ## 管理现有的ComfyUI环境
@@ -63,3 +61,16 @@ cd ./ComfyUI-EasyManager/linux && chmod +x install.sh && ./install.sh
 ```bash
 chmod +x start.sh && ./start.sh
 ```
+
+### 参数配置
+文件目录及说明：
+```bash
+ComfyUI-EasyManager/   # 项目目录
+├── linux/  # Linux 运行脚本
+├── win/ #Windows运行脚本
+    ├── config.toml # 配置文件，手动指定Python镜像源、用户token和包版本，请去掉文件名的.example后缀,才会生效
+    ├── repos.toml # 插件管理地址配置文件，请去掉文件名的.example后缀,才会生效
+    ├── repos_hf.toml # huggingface仓库地址配置文件，请去掉文件名的.example后缀,才会生效
+    ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
+```
+### 脚本更新

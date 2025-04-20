@@ -12,23 +12,11 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 #HF_TOKEN
 $HF_TOKEN = ""
 
-$configFile = Join-Path $ROOT_DIR "config.toml"
-try {
-    if (Test-Path $configFile) {
-        $config = Convert-FromToml $configFile
-    } else {
-        Write-Host "ℹ️ 未找到配置文件，使用默认配置" -ForegroundColor Yellow
-        # 提供默认配置
-        $config = @{
-        # 默认配置项
-        }
-    }
-} catch {
-    Write-Warning "无法读取配置文件，使用默认配置"
-    $config = @{
+$config = @{
     # 默认配置项
-    }
 }
+
+
 # 配置pip镜像源
 if ($config.authorizations -and $config.authorizations.huggingface_token) {
     Write-Host "🔧 检测到配置的huggingface token，已经设置: $($config.authorizations.huggingface_token)" -ForegroundColor Cyan
@@ -72,14 +60,6 @@ if ($proxyEnabled -eq 1 -and $sysProxy) {
 . (Join-Path $ROOT_DIR "tools.ps1")
 
 
-
-
-
-
-
-
-
-
 try {
     Write-Host "============================"
     Write-Host "🔄 从远程仓库克隆应用到本地"
@@ -99,6 +79,8 @@ try {
     # 初始化Conda和python环境
     Install-CondaPythonEnvironment
 
+    #解析toml依赖Python，Python环境安装好后才能初始化配置文件
+    $config = Get-ConfigFromFile
 
     # 安装PyTorch
     Write-Host "🔄 安装PyTorch..."

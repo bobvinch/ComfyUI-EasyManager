@@ -2,6 +2,7 @@
 # 设置Conda路径
 $CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
+$ROOT_DIR = $PSScriptRoot
 
 
 function Handle-Error {
@@ -10,6 +11,20 @@ function Handle-Error {
     Write-Host "按任意键退出..."
     $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
     exit 1
+}
+
+# 获取配置文件
+function Get-ConfigFromFile {
+    try {
+        $configFile = Join-Path $ROOT_DIR "config.toml"
+        $config = Convert-FromToml $configFile
+    } catch {
+        Write-Warning "无法读取配置文件，使用默认配置"
+        $config = @{
+        # 默认配置项
+        }
+    }
+    return $config
 }
 
 # 函数：检查工具是否已安装

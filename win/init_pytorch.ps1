@@ -389,7 +389,6 @@ function Install-PyTorch {
                 torchaudio `
                 numpy `
                 pandas `
-                pytorch-cuda=$cudaV `
                 -p $envPath -c nvidia -c pytorch  -y
 
             # 获取匹配的版本信息
