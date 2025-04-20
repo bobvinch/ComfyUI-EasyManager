@@ -101,29 +101,31 @@ function Install-HuggingfaceRepos {
             Set-Location $fullPath
             try
             {
-                if (Test-Path ".git") {
-                    Write-Host "� 仓库已存在，检查更新..." -ForegroundColor Cyan
+                Write-Host "📦 开始处理: $($repo.description)" -ForegroundColor Cyan
+                $repo_name = Split-Path $repo.url -Leaf
+                $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
+
+                if (Test-Path (Join-Path $fullPath ".git")) {
+                    Write-Host "📦 仓库已存在，尝试更新..." -ForegroundColor Cyan
+                    # 更新
+                    git -C $fullPath pull --force --tags --recurse-submodules --progress --depth=1
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "❌ 更新失败: $($repo.description)" -ForegroundColor Red
+                        continue
+                    }
                 } else {
-                    Write-Host "📦 开始处理: $($repo.description)" -ForegroundColor Cyan
-                    $repo_name = Split-Path $repo.url -Leaf
-                    $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
+                    Write-Host "📦 克隆仓库..." -ForegroundColor Cyan
+                    $env:GIT_LFS_SKIP_SMUDGE = 1
 
-                    if (Test-Path (Join-Path $fullPath ".git")) {
-                        Write-Host "📦 仓库已存在，跳过克隆..." -ForegroundColor Cyan
-                    } else {
-                        Write-Host "📦 克隆仓库..." -ForegroundColor Cyan
-                        $env:GIT_LFS_SKIP_SMUDGE = 1
+                    # 直接使用带过滤条件的clone命令
+                    git clone --filter=blob:none --no-checkout $repo.url $fullPath
+                    git -C $fullPath sparse-checkout init --cone
+                    git -C $fullPath sparse-checkout set "/*" "!*.safetensors" "!*.ckpt" "!*.bin" "!*.pth" "!*.pt" "!*.onnx" "!*.pkl"
+                    git -C $fullPath checkout
 
-                        # 直接使用带过滤条件的clone命令
-                        git clone --filter=blob:none --no-checkout $repo.url $fullPath
-                        git -C $fullPath sparse-checkout init --cone
-                        git -C $fullPath sparse-checkout set "/*" "!*.safetensors" "!*.ckpt" "!*.bin" "!*.pth" "!*.pt" "!*.onnx" "!*.pkl"
-                        git -C $fullPath checkout
-
-                        if ($LASTEXITCODE -ne 0) {
-                            Write-Host "❌ 克隆失败: $($repo.description)" -ForegroundColor Red
-                            continue
-                        }
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "❌ 克隆失败: $($repo.description)" -ForegroundColor Red
+                        continue
                     }
                 }
 
