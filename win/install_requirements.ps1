@@ -34,7 +34,6 @@ $condaPythonPath = "$ENV_PATH\python.exe"
 $ROOT_DIR = $PSScriptRoot
 $envPath = Join-Path $ROOT_DIR "envs\comfyui"
 $COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
-$target = "$envPath\Lib\site-packages"
 $CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
 
 # 自动检测代理
@@ -51,51 +50,9 @@ if ($proxyEnabled -eq 1 -and $sysProxy) {
     Write-Host "⚠️ 未检测到有效的代理设置" -ForegroundColor Yellow
 }
 
-function Install-CondaEnvironment {
-    # 检查 Miniconda 是否已安装
-    if (-not (Test-Path $CONDA_PATH)) {
-        Write-Host "🔄 安装 Miniconda..."
-        $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
-        $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
+#  引入工具函数
+. (Join-Path $ROOT_DIR "tools.ps1")
 
-        Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
-        Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
-        Remove-Item $INSTALLER_PATH
-
-        # 初始化 conda
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    }
-    else {
-        Write-Host "✅ Miniconda 已安装"
-    }
-
-    # 检查环境是否存在
-    $envExists = conda env list | Select-String -Pattern ([regex]::Escape($ENV_PATH))
-    if (-not $envExists) {
-        Write-Host "🔄 创建新的 Python 环境 3.10..."
-        Write-Host "🔄 当前的 channels 配置："
-        conda config --show channels
-        # 配置 conda 镜像源
-        Write-Host "� 配置 conda 镜像源..." -ForegroundColor Cyan
-        # 先删除所有已有的镜像源配置
-        #        conda config --remove-key channels
-        # 添加阿里云镜像源
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
-        #        conda config --set show_channel_urls yes
-        #        Write-Host " 配置 conda 镜像源完成" -ForegroundColor Green
-
-        conda config --show channels
-        conda create -p $ENV_PATH python=3.10 -y --override-channels -c defaults
-        Write-Host "✅ Python 环境创建完成"
-        Write-Host "✅ Python 及pytorch 环境创建完成"
-    }
-    else {
-        Write-Host "✅ Python 环境已存在"
-    }
-}
 
 # 定义依赖安装函数
 function Install-Requirements {
@@ -417,8 +374,10 @@ function Install-CustomNodeRequirements {
     Write-Host "共有" $nodeFolders.Count "个自定义节点，开始遍历自定义节点目录..." -ForegroundColor Cyan
 
 
-
     foreach ($folder in $nodeFolders) {
+        # 重新检查和分析依赖分件
+#        conda run -p $ENV_PATH pipreqs $folder.FullName --force --noversion
+
         $reqFile = Join-Path $folder.FullName "requirements.txt"
 
         if (Test-Path $reqFile) {
@@ -560,14 +519,14 @@ function Install-UserDefinedRequirements {
                     # 强制更新
                     Write-Host "📦 正在强制更新安装包: 包名: $packageName,旧版本:$versionOld, 新版本: $versionNew" -ForegroundColor Yellow
                     & $condaPipPath uninstall $packageName --yes
-                    & $condaPipPath install $versionString --target $target --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                    & $condaPipPath install $versionString  --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
                 } else {
                     if($isInstalled){
                         Write-Host "📦 包已经安装，跳过安装: 包名: $packageName" -ForegroundColor Green
                         return
                     }
                     Write-Host "📦 正在安装包: 包名: $packageName" -ForegroundColor Yellow
-                    & $condaPipPath install $packageName --target $target --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                    & $condaPipPath install $packageName  --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
                 }
             }
         }
@@ -585,8 +544,8 @@ try {
         Write-Host "❌ ComfyUI目录不存在: $COMFY_DIR" -ForegroundColor Red
         exit 1
     }
-    # 安装Conda环境
-    Install-CondaEnvironment
+    # 初始化Conda和Python环境
+    Install-CondaPythonEnvironment
 
     # 初始化pytorch
     ./init_pytorch.ps1

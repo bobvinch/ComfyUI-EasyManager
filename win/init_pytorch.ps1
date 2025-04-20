@@ -366,9 +366,6 @@ function Install-PyTorch {
     )
 
     try {
-        # 激活环境
-        Write-Host "🔄 激活环境..."
-
         if ($cudaVersion) {
             Write-Host "⚙️ 正在安装CUDA版本的PyTorch..."
 
@@ -433,6 +430,11 @@ function Install-PyTorch {
             torchaudio==$($packages.torchaudio) `
             -p $envPath -c pytorch -y
         }
+
+
+        # 安装 包依赖管理，用于分析依赖 todo 未测试通过
+#        Write-Host "📦 安装包依赖管理工具 pipreqs..."
+#        & $condaPipPath install pipreqs
 
         # 验证安装
         Write-Host "🔍 验证安装..."

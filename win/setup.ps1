@@ -44,8 +44,7 @@ $COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
 $condaPipPath = "$ENV_PATH\Scripts\pip.exe"
 $condaPythonPath = "$ENV_PATH\python.exe"
-# 设置Conda路径
-$CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
+
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
 # 设置默认端口
 $PORT = if ($args[0]) { $args[0] } else { "8188" }
@@ -69,261 +68,16 @@ if ($proxyEnabled -eq 1 -and $sysProxy) {
 }
 
 
-# 函数：错误处理
-function Handle-Error {
-    param($ErrorMessage)
-    Write-Host "❌ 错误：$ErrorMessage" -ForegroundColor Red
-    Write-Host "按任意键退出..."
-    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-    exit 1
-}
-
-# 函数：检查工具是否已安装
-function Test-ToolInstalled {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ToolName
-    )
-
-    $result = @{
-        IsInstalled = $false
-        Version = $null
-        Path = $null
-        Message = ""
-    }
-
-    try {
-        $cmdInfo = Get-Command $ToolName -ErrorAction Stop
-        $result.IsInstalled = $true
-        $result.Path = $cmdInfo.Source
-
-        # 尝试获取版本信息
-        try {
-            $version = & $ToolName --version 2>&1
-            $result.Version = $version[0]
-        } catch {
-            $result.Version = "未知"
-        }
-
-        $result.Message = "✅ $ToolName 已安装"
-    }
-    catch {
-        if ($ToolName -eq "choco") {
-            $chocoPath = "$env:ProgramData\chocolatey\bin\choco.exe"
-            if (Test-Path $chocoPath) {
-                $result.IsInstalled = $true
-                $result.Path = $chocoPath
-                try {
-                    $version = & $chocoPath --version 2>&1
-                    $result.Version = $version[0]
-                } catch {
-                    $result.Version = "未知"
-                }
-                $result.Message = "✅ Chocolatey 已安装"
-            } else {
-                $result.Message = "❌ Chocolatey 未安装"
-            }
-        } else {
-            $result.Message = "❌ $ToolName 未安装"
-        }
-    }
-
-    return $result
-}
-
-
-# 刷新环境变量
-function Update-EnvPath {
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-}
-
-function Install-Conda {
-    Write-Host "⏳ 安装 Miniconda..."
-    $MINICONDA_URL = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
-    $INSTALLER_PATH = Join-Path $env:TEMP "miniconda.exe"
-
-    try {
-        Invoke-WebRequest -Uri $MINICONDA_URL -OutFile $INSTALLER_PATH
-        Start-Process -FilePath $INSTALLER_PATH -ArgumentList "/S /D=$CONDA_PATH" -Wait
-        Remove-Item $INSTALLER_PATH
-
-        # 更新环境变量
-        $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-        $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
-        $env:Path = "$machinePath;$userPath"
-
-        # 添加 Conda 相关路径
-        $condaScripts = Join-Path $CONDA_PATH "Scripts"
-        $env:Path = "$CONDA_PATH;$condaScripts;$env:Path"
-
-        # 初始化 Conda for PowerShell
-        $initScript = Join-Path $CONDA_PATH "shell\condabin\conda-hook.ps1"
-        if (Test-Path $initScript) {
-            & $initScript
-            conda init powershell
-        }
-
-        # 验证安装
-        $retryCount = 0
-        while ($retryCount -lt 3) {
-            if (Get-Command conda -ErrorAction SilentlyContinue) {
-                Write-Host "✅ Conda 安装成功并已初始化" -ForegroundColor Green
-                return $true
-            }
-            Start-Sleep -Seconds 2
-            $retryCount++
-        }
-
-        Write-Host "⚠️ Conda 已安装但需要重启 PowerShell 才能使用" -ForegroundColor Yellow
-        return $false
-    }
-    catch {
-        Write-Host "❌ Conda 安装失败: $_" -ForegroundColor Red
-        return $false
-    }
-}
+#  引入工具函数
+. (Join-Path $ROOT_DIR "tools.ps1")
 
 
 
-function Install-CondaEnvironment {
-    # 检查 Miniconda 是否已安装
-    if (-not (Test-Path $CONDA_PATH)) {
-        Install-Conda
-    }
-
-    # 验证conda命令是否可用
-    $condaCommand = Get-Command conda -ErrorAction SilentlyContinue
-    if ($null -eq $condaCommand) {
-        Write-Host "❌ Conda命令不可用，请检查安装" -ForegroundColor Red
-        Install-Conda
-    }
-
-    # 检查环境是否存在
-    $envExists = conda env list | Select-String -Pattern ([regex]::Escape($ENV_PATH))
-    if (-not $envExists) {
-        Write-Host "🔄 创建新的 Python 环境 3.10..."
-        Write-Host "🔄 当前的 channels 配置："
-        conda config --show channels
-        # 配置 conda 镜像源
-        Write-Host "� 配置 conda 镜像源..." -ForegroundColor Cyan
-        # 先删除所有已有的镜像源配置
-        #        conda config --remove-key channels
-        # 添加阿里云镜像源
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
-        #        conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
-        #        conda config --set show_channel_urls yes
-        #        Write-Host " 配置 conda 镜像源完成" -ForegroundColor Green
-
-        conda config --show channels
-        conda create -p $ENV_PATH python=3.10 -y --override-channels -c defaults
-        Write-Host "✅ Python 环境创建完成"
-        Write-Host "✅ Python 及pytorch 环境创建完成"
-    }
-    else {
-        Write-Host "✅ Python 环境已存在"
-    }
-}
 
 
-function Install_Aria2 {
-    Write-Host "============================" -ForegroundColor Cyan
-    Write-Host " 开始安装多线程下载工具" -ForegroundColor Cyan
-    Write-Host "============================" -ForegroundColor Cyan
 
-    # 检查是否已安装 aria2c
-    $aria2Status = Test-ToolInstalled -ToolName 'aria2c'
-    if ($aria2Status.IsInstalled) {
-        Write-Host $aria2Status.Message -ForegroundColor Green
-        Write-Host "版本: $($aria2Status.Version)"
-        Write-Host "路径: $($aria2Status.Path)"
-    } else {
-        Write-Host "⚙️ 正在安装 aria2c..." -ForegroundColor Cyan
 
-        # 检查 Chocolatey
-        $chocoStatus = Test-ToolInstalled -ToolName 'choco'
-        if (-not $chocoStatus.IsInstalled) {
-            Write-Host "⚙️ 正在安装 Chocolatey..." -ForegroundColor Cyan
 
-            # 检查管理员权限
-            if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-                Write-Error "需要管理员权限才能安装 Chocolatey。请使用管理员身份运行此脚本。"
-                throw "权限不足" # 或者根据需要返回 $false 或退出
-            }
-
-            try {
-                # 设置执行策略 (进程级别，更安全)
-                Set-ExecutionPolicy Bypass -Scope Process -Force
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-
-                # 执行官方安装命令
-                Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
-                # 安装后立即刷新环境变量，以便在当前会话中找到 choco
-                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-                # 重新检查 Chocolatey 安装状态
-                $chocoStatus = Test-ToolInstalled -ToolName 'choco'
-                if ($chocoStatus.IsInstalled) {
-                    Write-Host "✅ Chocolatey 安装完成" -ForegroundColor Green
-                } else {
-                    # 如果 Test-ToolInstalled 仍然找不到，尝试直接检查路径
-                    if (Test-Path "$env:ProgramData\chocolatey\bin\choco.exe") {
-                        Write-Host "✅ Chocolatey 安装完成 (路径已确认)" -ForegroundColor Green
-                        # 手动将路径添加到当前会话
-                        $env:Path += ";$env:ProgramData\chocolatey\bin"
-                        $chocoStatus = $true # 假设安装成功以便继续
-                    } else {
-                        Write-Host "❌ Chocolatey 安装失败" -ForegroundColor Red
-                        throw "Chocolatey 安装失败"
-                    }
-                }
-            } catch {
-                Write-Host "❌ Chocolatey 安装过程中出错: $_" -ForegroundColor Red
-                throw $_
-            }
-        } else {
-            # 如果 Chocolatey 已安装，打印状态信息
-            Write-Host "✅ Chocolatey 已安装。" -ForegroundColor Green
-            # 确保 choco 在当前会话的 PATH 中 (有时新打开的会话可能没有立即更新)
-            $chocoPath = Split-Path -Path ($chocoStatus.Path) -Parent -ErrorAction SilentlyContinue
-            if ($chocoPath -and ($env:Path -notlike "*$chocoPath*")) {
-                $env:Path += ";$chocoPath"
-                Write-Host "  (已将 Chocolatey 路径添加到当前会话 PATH)" -ForegroundColor DarkGray
-            }
-        }
-
-        # 确保 $chocoStatus 为 $true 或具有 IsInstalled 属性
-        if ($chocoStatus -is [hashtable] -and $chocoStatus.IsInstalled -or $chocoStatus -eq $true) {
-            # 使用 choco 安装 aria2 (现在应该能直接调用 choco)
-            Write-Host "⚙️ 正在通过 Chocolatey 安装 aria2..." -ForegroundColor Cyan
-            try {
-                # 使用 choco 命令，它应该在 PATH 中
-                choco install aria2 -y --force
-                # 刷新环境变量以包含 aria2
-                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            } catch {
-                Write-Host "❌ 使用 Chocolatey 安装 aria2 时出错: $_" -ForegroundColor Red
-                throw $_
-            }
-
-            # 验证安装
-            $finalStatus = Test-ToolInstalled -ToolName 'aria2c'
-            if ($finalStatus.IsInstalled) {
-                Write-Host $finalStatus.Message -ForegroundColor Green
-                Write-Host "版本: $($finalStatus.Version)"
-                Write-Host "路径: $($finalStatus.Path)"
-            } else {
-                Write-Host $finalStatus.Message -ForegroundColor Red
-                throw "aria2c 安装失败"
-            }
-        } else {
-            Write-Host "❌ 未找到 Chocolatey，无法安装 aria2c。" -ForegroundColor Red
-            throw "依赖项 Chocolatey 未满足"
-        }
-    }
-}
 
 
 try {
@@ -342,12 +96,9 @@ try {
 
 
 
-    # 初始化Conda环境
-    Install-CondaEnvironment
+    # 初始化Conda和python环境
+    Install-CondaPythonEnvironment
 
-
-    # 激活环境
-    Write-Host "🔄 激活 Python 环境..."
 
     # 安装PyTorch
     Write-Host "🔄 安装PyTorch..."
@@ -399,9 +150,6 @@ try {
         Write-Host "模型配置解析出现问题，使用默认空配置" -ForegroundColor Yellow
     }
     if ($models -and $models.models -and $models.models.Count -gt 0) {
-        # 安装aria2
-        Install_Aria2
-
         foreach ($model in $models.models) {
             Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
             $targetDir = Join-Path $COMFY_DIR $model.dir
@@ -437,7 +185,6 @@ try {
 
 } catch {
     Handle-Error $_.Exception.Message
-    throw
 }
 
 Write-Host "`n✅ 安装完成！" -ForegroundColor Green
