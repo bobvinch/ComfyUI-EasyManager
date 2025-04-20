@@ -25,8 +25,12 @@ Set-ExecutionPolicy RemoteSigned
 # 克隆脚本
 git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
 ```
+
+## 创建一个新的ComfyUI黄金
 进入ComfyUI-EasyManager目录下win目录,一键安装及启动:右键`setup.ps1` 使用PowerShell运行
 
+## 管理现有的ComfyUI环境
+将ComfyUI-EasyManager目录下win目录下的所有文件，复制到现有的ComfyUI目录的同级目录【目录名必须是ComfyUI】，右键`setup.ps1` 使用PowerShell运行，脚本将自动修复现有环境、安装依赖并启动ComfyUI
 
 #### 仅启动
 启动ComfyUI环境：右键`start.ps1` 使用PowerShell运行
