@@ -72,8 +72,10 @@ function Start_DownloadUserConfigModels {
     }
 
     if ($isInteractive) {
-        Write-Host "`n按任意键继续..." -ForegroundColor Cyan
-        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        Write-Host "`n按 Enter 键退出..." -ForegroundColor Cyan
+        do {
+            $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        } until ($key.VirtualKeyCode -eq 13) # 13 是 Enter 键的虚拟键码
     }
 }
 

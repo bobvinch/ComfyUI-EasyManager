@@ -50,6 +50,10 @@ function Initialize-DownloadTools {
 
 # 执行安装仓库
 function Install-HuggingfaceRepos {
+    param (
+        [Parameter(Mandatory = $false)]
+        [Boolean]$isInteractive = $false
+    )
 
     # 安装工具
     Initialize-DownloadTools
@@ -177,11 +181,17 @@ function Install-HuggingfaceRepos {
         }
 
         Write-Host "✨ 所有任务处理完成" -ForegroundColor Green
+        if ($isInteractive) {
+            Write-Host "`n按 Enter 键退出..." -ForegroundColor Cyan
+            do {
+                $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+            } until ($key.VirtualKeyCode -eq 13) # 13 是 Enter 键的虚拟键码
+        }
     }
 }
 
 # 调用函数
-Install-HuggingfaceRepos
+Install-HuggingfaceRepos -isInteractive $true
 
 
 
