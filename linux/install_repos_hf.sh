@@ -6,6 +6,9 @@ if [ -f /etc/network_turbo ]; then
     source /etc/network_turbo
 fi
 
+# 导出工具函数
+source ./tools.sh
+
 # 函数：显示使用方法
 show_usage() {
     echo "使用方法: $0 <HF下载token>"
@@ -16,9 +19,6 @@ show_usage() {
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 echo "脚本所在目录是: $ROOT_DIR"
 COMFY_DIR="$ROOT_DIR/ComfyUI"
-HF_TOKEN="$1"
-
-
 
 
 # 初始化工具
@@ -56,6 +56,8 @@ if [ ! -f "$REPOS_FILE" ]; then
     echo "❌ 未找到配置文件：$REPOS_FILE"
 else
     echo "🚀 开始处理huggingface仓库下载任务"
+    HF_TOKEN=$(tools_get_hf_token)
+
     # 配置 git 凭证
     git config --global credential.helper store
     git config --global init.defaultBranch main
@@ -128,12 +130,20 @@ else
                 echo "📥 开始下载文件: $file"
                 echo "🔗 下载URL: $file_url"
                 echo "📂 保存路径: $fullPath"
-
-                if "$ROOT_DIR"/download.sh "$file_url" "Authorization: Bearer $HF_TOKEN" "$fullPath"; then
-                    echo "✅ 文件下载成功: $file"
+                # 设置认证头（如果 HF_TOKEN 存在）
+                local auth_header=""
+                [ -n "$HF_TOKEN" ] && auth_header="Authorization: Bearer $HF_TOKEN"
+                if [ -n "$auth_header" ]; then
+                     download_file_by_aria2c "$file_url" "$auth_header" "$fullPath"
                 else
-                    echo "❌ 文件下载失败: $file"
+                     download_file_by_aria2c "$file_url" "" "$fullPath"
                 fi
+
+#                if "$ROOT_DIR"/download.sh "$file_url" "Authorization: Bearer $HF_TOKEN" "$fullPath"; then
+#                    echo "✅ 文件下载成功: $file"
+#                else
+#                    echo "❌ 文件下载失败: $file"
+#                fi
                 echo "-------------------"
             done
 
@@ -145,9 +155,6 @@ else
         echo "-------------------"
     done
 fi
-
-
-
 echo "✨ Hugging face仓库任务处理完成"
 }
 

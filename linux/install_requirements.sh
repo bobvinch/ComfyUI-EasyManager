@@ -186,7 +186,6 @@ install_requirements() {
     fi
 
     # 安装需要手动版本的包
-
     echo "✅ ${context}依赖检查完成"
 }
 
@@ -231,7 +230,16 @@ check_forced_dependencies() {
     local config_file="$1"
     local to_install=()
 
+    # 检查配置文件是否存在
+    if [ ! -f "$config_file" ]; then
+        echo "❌ 配置文件不存在: $config_file"
+        return 1
+    fi
+
     echo "🔍 检查强制指定的依赖..."
+
+
+
 
     # 使用 yq 和 jq 解析 TOML 文件中的包信息，优化包名和版本的处理
     local packages_info=$(yq -o=json eval "$config_file" | jq -r '.packages[] | to_entries[] | select(.value != null) | if .value == "" then .key else .value end')
@@ -376,21 +384,7 @@ function InitializePythonEnv() {
     fi
 }
 
-# 初始化 Python 环境
-InitializePythonEnv
-
-# 初始化 conda
-source "$CONDA_PATH/etc/profile.d/conda.sh"
-conda init bash
-# 激活环境
-echo "🚀 激活 Python 环境..."
-conda activate "$ENV_PATH"
-
-#安装ComfyUI环境依赖
-echo "🚀 安装ComfyUI环境依赖"
-cd "$COMFY_DIR" || exit
-install_requirements "requirements.txt" "ComfyUI"
-
+function InitializeCustomNodeRepos () {
 
 # 安装节点及节点依赖
 cd "$COMFY_DIR/custom_nodes" || exit
@@ -415,6 +409,11 @@ for tool in yq jq; do
     fi
 done
 
+#检查配置文件是否存在
+if [ ! -f "$ROOT_DIR/repos.toml" ]; then
+    echo "❌ repos.toml 文件不存在，请检查配置文件路径"
+    return 1
+fi
 
 # 读取 TOML 文件中的仓库列表
 REPOS_URLS=$(yq -o=json eval "$ROOT_DIR/repos.toml" | jq -r '.repos[].url')
@@ -448,7 +447,26 @@ while IFS= read -r repo; do
 
     cd ..
     echo "-------------------"
-done <<< "$REPOS_URLS"
+  done <<< "$REPOS_URLS"
+}
+
+# 初始化 Python 环境
+InitializePythonEnv
+
+# 初始化 conda
+source "$CONDA_PATH/etc/profile.d/conda.sh"
+conda init bash
+# 激活环境
+echo "🚀 激活 Python 环境..."
+conda activate "$ENV_PATH"
+
+#安装ComfyUI环境依赖
+echo "🚀 安装ComfyUI环境依赖"
+cd "$COMFY_DIR" || exit
+install_requirements "requirements.txt" "ComfyUI"
+
+# 安装节点配置文件中的节点
+InitializeCustomNodeRepos
 
 # 安装用户自定义的节点依赖
 install_custom_node_requirements

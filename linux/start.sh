@@ -2,13 +2,40 @@
 
 set -e  # 发生错误时终止脚本执行
 
-PORT="${1:-8188}"
+PORT="8188"
+
 # autodl 开启学术加速
 if [ -f /etc/network_turbo ]; then
     # autodl默认6006
     PORT=6006
     source /etc/network_turbo
 fi
+
+# 如何$1存在
+if [ -n "$1" ]; then
+    PORT="$1"
+fi
+
+# 处理选项
+# :p: 表示 -p 选项需要一个参数
+while getopts ":p:" opt; do
+  case $opt in
+    p)
+      PORT="$OPTARG"
+      ;;
+    \?) # 处理无效选项
+      echo "无效选项: -$OPTARG" >&2
+      exit 1
+      ;;
+    :) # 处理缺少参数的选项
+      echo "选项 -$OPTARG 需要一个参数." >&2
+      exit 1
+      ;;
+  esac
+done
+
+
+
 # 获取脚本所在目录
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 echo "脚本所在目录是: $ROOT_DIR"
