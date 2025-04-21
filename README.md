@@ -67,12 +67,18 @@ chmod +x start.sh && ./start.sh
 ```bash
 ComfyUI-EasyManager/   # 项目目录
 ├── linux/  # Linux 运行脚本
-├── win/ #Windows运行脚本
-    ├── config.toml # 配置文件，手动指定Python镜像源、用户token和包版本，请去掉文件名的.example后缀,才会生效
+    ├── config.toml  # 配置文件，手动指定Python镜像源、用户token和包版本，请去掉文件名的.example后缀,才会生效
     ├── repos.toml # 插件管理地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── repos_hf.toml # huggingface仓库地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
-    ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
+    ├── install.sh # 一键安装ComfyUI环境、节点依赖和模型安装
+    ├── start.sh # 启动ComfyUI,后接参数，指定端口，如：./start.sh 8188 启动ComfyUI，8188为端口号
+    ├── install_requirements.sh # 安装依赖
+├── win/ #Windows运行脚本
+    ├── config.toml #与linux/config.toml一样
+    ├── repos.toml # 与linux/repos.toml一样
+    ├── repos_hf.toml  # 与linux/repos.toml一样
+    ├── models.toml # 与linux/repos.toml一样
     ├── tools.ps1 # 工具脚本
     ├── setup.ps1 # 【可单独运行】一键安装ComfyUI环境、节点依赖和模型安装
     ├── install_requirements.ps1 # 【可单独运行】安装依赖
@@ -83,3 +89,8 @@ ComfyUI-EasyManager/   # 项目目录
 
 ```
 ### 脚本更新
+在ComfyUI-EasyManager目录下执行以下命令更新脚本
+```bash 
+git pull
+```
+然后再将所有的ps1文件复制到ComfyUI的同级目录直接替换原有的脚本文件，后缀为.example的文件可以不需要复制

@@ -18,25 +18,36 @@ echo "脚本所在目录是: $ROOT_DIR"
 COMFY_DIR="$ROOT_DIR/ComfyUI"
 HF_TOKEN="$1"
 
-# 检查必要工具
-for tool in yq aria2c git-lfs; do
-    if ! command -v $tool &> /dev/null; then
-        echo "⚙️ 安装 $tool..."
-        case $tool in
-            "yq")
-                wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-                chmod a+x /usr/local/bin/yq
-                ;;
-            "aria2c")
-                apt-get update &&  apt-get install -y aria2
-                ;;
-            "git-lfs")
-                 apt-get update &&  apt-get install -y git-lfs
-                git lfs install
-                ;;
-        esac
-    fi
-done
+
+
+
+# 初始化工具
+init_aria2_and_git_lfs() {
+    # 检查必要工具
+    for tool in yq aria2c git-lfs; do
+        if ! command -v $tool &> /dev/null; then
+            echo "⚙️ 安装 $tool..."
+            case $tool in
+                "yq")
+                    wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+                    chmod a+x /usr/local/bin/yq
+                    ;;
+                "aria2c")
+                    apt-get update &&  apt-get install -y aria2
+                    ;;
+                "git-lfs")
+                     apt-get update &&  apt-get install -y git-lfs
+                    git lfs install
+                    ;;
+            esac
+        fi
+    done
+}
+
+# 克隆仓库和下载文件
+clone_repos_and_download_file() {
+  # 初始化 aria2c 和 git-lfs
+  init_aria2_and_git_lfs
 
 # 读取 TOML 文件
 REPOS_FILE="$ROOT_DIR/repos_hf.toml"
@@ -138,3 +149,9 @@ fi
 
 
 echo "✨ Hugging face仓库任务处理完成"
+}
+
+clone_repos_and_download_file
+
+
+export -f clone_repos_and_download_file

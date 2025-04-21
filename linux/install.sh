@@ -26,6 +26,9 @@ if [ -f /etc/network_turbo ]; then
     source /etc/network_turbo
 fi
 
+# 导出工具函数
+source ./tools.sh
+
 
 
 # 判断源目录和目标目录是否都不存在
@@ -98,27 +101,27 @@ fi
 echo "🚀 aria2c安装成功"
 
 
-## 部分模型下载需要的token
-HF_TOKEN=""
-
-chmod +x parse_toml.sh
-
-CONFIG_TOML="$ROOT_DIR/config.toml"
-if [ ! -f "$CONFIG_TOML" ]; then
-    echo "❌ 未找到配置文件：$CONFIG_TOML"
-else
-    TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
-    if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
-        if [ "$TOKEN_VALUE" != "" ]; then
-            HF_TOKEN="$TOKEN_VALUE"
-            echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
-        else
-            echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空，你可能无法正常下载部分huggingface模型"
-        fi
-    else
-        echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
-    fi
-fi
+### 部分模型下载需要的token
+#HF_TOKEN=""
+#
+#chmod +x parse_toml.sh
+#
+#CONFIG_TOML="$ROOT_DIR/config.toml"
+#if [ ! -f "$CONFIG_TOML" ]; then
+#    echo "❌ 未找到配置文件：$CONFIG_TOML"
+#else
+#    TOKEN_VALUE=$(./parse_toml.sh ./config.toml | jq -r '.authorizations[].huggingface_token // empty')
+#    if [ -n "$TOKEN_VALUE" ] && [ "$TOKEN_VALUE" != "null" ]; then
+#        if [ "$TOKEN_VALUE" != "" ]; then
+#            HF_TOKEN="$TOKEN_VALUE"
+#            echo "✅ 已设置 huggingface_token 为: $HF_TOKEN"
+#        else
+#            echo "⚠️ 警告: config.toml 中的 huggingface_token 值为空，你可能无法正常下载部分huggingface模型"
+#        fi
+#    else
+#        echo "❌ 警告: 无法从 config.toml 中读取 huggingface_token，你可能无法正常下载部分huggingface模型"
+#    fi
+#fi
 
 
 
