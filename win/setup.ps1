@@ -10,19 +10,12 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptPath "parse_toml.ps1")
 #  引入工具函数
 . (Join-Path $ROOT_DIR "tools.ps1")
-# 引入下载模型
-. (Join-Path $ROOT_DIR "download.ps1")
-# 引入Huggingface 下载
-. (Join-Path $ROOT_DIR "install_repos_hf.ps1")
+
 
 
 $config = @{
     # 默认配置项
 }
-
-
-
-
 
 $ROOT_DIR = $PSScriptRoot
 # 获取脚本所在目录
@@ -72,7 +65,6 @@ try {
     else {
         Write-Host "⚠️ ComfyUI已存在（在源目录或目标目录中），跳过克隆步骤"
     }
-
 
 
     # 初始化Conda和python环境
