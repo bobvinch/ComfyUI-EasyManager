@@ -98,3 +98,6 @@ ComfyUI-EasyManager/   # 项目目录
 git pull
 ```
 然后再将所有的ps1文件复制到ComfyUI的同级目录直接替换原有的脚本文件，后缀为.example的文件可以不需要复制
+
+### 提交贡献及问题反馈交流
+欢迎大家提issue，或者直接提PR，或者加群交流：[问题反馈及联系加群](https://work.weixin.qq.com/kfid/kfc1bf83fcf005d3715)
