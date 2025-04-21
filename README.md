@@ -77,7 +77,7 @@ ComfyUI-EasyManager/   # 项目目录
     ├── install_repos_hf.sh # 下载hugging face仓库-repos_hf.toml更新时单独执行 【可单独运行】
     ├── download.sh # 下载模型，model.toml更新时运行 【可单独运行】
     ├── init_pytorch.sh # 初始化基础环境-修复pytorch环境,pytorch环境崩溃时运行 【可单独运行】
-    ├── tools.ps1 # 工具脚本
+    ├── tools.sh # 工具脚本
 ├── win/ #Windows运行脚本
     ├── config.toml #与linux/config.toml一样
     ├── repos.toml # 与linux/repos.toml一样
