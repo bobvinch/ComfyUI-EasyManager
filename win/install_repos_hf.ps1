@@ -89,7 +89,6 @@ function Install-HuggingfaceRepos {
 
 
         foreach ($repo in $repos.repos) {
-            Write-Host "📦 开始处理: $($repo.description)" -ForegroundColor Cyan
             $repo_name = Split-Path $repo.url -Leaf
             $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
 
@@ -99,24 +98,89 @@ function Install-HuggingfaceRepos {
             # 保存当前目录
             $previousLocation = Get-Location
             Set-Location $fullPath
+
+            # 保存当前环境变量值 (如果存在)
+            $oldSkipSmudge = $env:GIT_LFS_SKIP_SMUDGE
             try
             {
                 Write-Host "📦 开始处理: $($repo.description)" -ForegroundColor Cyan
                 $repo_name = Split-Path $repo.url -Leaf
                 $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
+
+                #格式化路径
+                $gitSafePath = $fullPath -replace '\\', '/'
+                # 确保驱动器号大写 (如果路径包含驱动器号)
+                if ($gitSafePath -match '^[a-z]:') {
+                    $gitSafePath = $gitSafePath.Substring(0, 1).ToUpper() + $gitSafePath.Substring(1)
+                }
+
+                Write-Host " 仓库路径: $gitSafePath" -ForegroundColor Cyan
+
+
+                # 设置环境变量以跳过 LFS 下载
+                $env:GIT_LFS_SKIP_SMUDGE = 1
+
                 # 兼容移动硬盘运行
-                git config --global --add safe.directory "$fullPath"
+#                git config --global --add safe.directory $gitSafePath
                 if (Test-Path (Join-Path $fullPath ".git")) {
-                    Write-Host "📦 仓库已存在，尝试更新..." -ForegroundColor Cyan
-                    # 更新
-                    git -C $fullPath pull --force --tags --recurse-submodules --progress --depth=1
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Host "❌ 更新失败: $($repo.description)" -ForegroundColor Red
+                    Write-Host "🔄 仓库已存在，检查目录内容..." -ForegroundColor Cyan
+
+                    # 获取目录下所有项 (包括隐藏的)，但不递归 (-Depth 0)
+                    $items = Get-ChildItem -Path $fullPath -Force -Depth 0
+
+                    # 过滤掉 .git 目录本身 和 其他隐藏项 (名字以.开头的文件或目录)
+                    $nonHiddenUserItems = $items | Where-Object { $_.Name -ne ".git" -and -not $_.Name.StartsWith(".") }
+
+                    # 检查过滤后的列表是否为空
+                    if ($nonHiddenUserItems.Count -eq 0) {
+
+                        Write-Host "  目录仅包含 .git 或隐藏项，执行强制更新..."
+
+                        # --- 强制更新逻辑 (fetch + reset) ---
+                        Write-Host "  Fetching updates..."
+                        git -C $fullPath fetch origin --force --tags --prune --progress --depth=1
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "❌ Fetch 失败: $($repo.description)，Git 退出码: $LASTEXITCODE" -ForegroundColor Red
+                            continue
+                        }
+
+                        # 检查是否存在 index.lock 文件
+                        # 检查是否存在 index.lock 文件
+                        $lockFilePath = Join-Path $fullPath ".git/index.lock"
+                        if (Test-Path $lockFilePath) {
+                            Write-Host "⚠️ 检测到锁文件 ($lockFilePath)。这可能表示另一个 Git 进程正在运行，或者上次操作异常终止。" -ForegroundColor Yellow
+                            Write-Host "⚠️ 尝试强制删除锁文件以继续更新... (风险提示：如果存在其他活动进程，可能导致仓库损坏)" -ForegroundColor Yellow
+                            try {
+                                Remove-Item -Path $lockFilePath -Force -ErrorAction Stop
+                                Write-Host "  锁文件已删除。" -ForegroundColor Green
+                            } catch {
+                                Write-Host "❌ 无法删除锁文件 ($lockFilePath): $_" -ForegroundColor Red
+                                Write-Host "  跳过更新: $($repo.description)" -ForegroundColor Red
+                                continue # 如果无法删除锁文件，则跳过此仓库
+                            }
+                        }
+
+                        $remoteBranch = "origin/main" # Or origin/master, etc.
+                        Write-Host "  Attempting to reset local state to $remoteBranch..." # 修改日志
+                        git -C $fullPath reset --hard $remoteBranch
+                        $resetExitCode = $LASTEXITCODE # 立刻保存退出码
+                        Write-Host "  Reset command finished with exit code: $resetExitCode" # 增加结束日志
+
+                        if ($resetExitCode -ne 0) {
+                            Write-Host "❌ Reset 失败: $($repo.description)，Git 退出码: $resetExitCode" -ForegroundColor Red
+                            continue
+                        }
+
+                        # --- 强制更新逻辑结束 ---
+
+                    } else {
+                        # 目录包含其他非隐藏文件/目录，跳过强制更新以防数据丢失
+                        Write-Host "⚠️ 仓库目录包含非隐藏文件/目录，跳过强制更新以防覆盖本地更改: $($repo.description)" -ForegroundColor Yellow
+                        # 你可以在这里选择其他操作，比如尝试非强制 pull，或者像现在这样直接跳过
                         continue
                     }
                 } else {
                     Write-Host "📦 克隆仓库..." -ForegroundColor Cyan
-                    $env:GIT_LFS_SKIP_SMUDGE = 1
 
                     # 直接使用带过滤条件的clone命令
                     git clone --filter=blob:none --no-checkout $repo.url $fullPath
@@ -178,6 +242,15 @@ function Install-HuggingfaceRepos {
             {
                 # 确保无论如何都会返回到原始目录
                 Set-Location $previousLocation
+                # 恢复环境变量
+                if ($null -ne $oldSkipSmudge) {
+                    $env:GIT_LFS_SKIP_SMUDGE = $oldSkipSmudge
+                    Write-Host "  恢复 GIT_LFS_SKIP_SMUDGE 环境变量。" -ForegroundColor Gray
+                } else {
+                    # 如果之前不存在，则移除
+                    Remove-Item Env:\GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue
+                    Write-Host "  移除临时设置的 GIT_LFS_SKIP_SMUDGE 环境变量。" -ForegroundColor Gray
+                }
             }
 
             Write-Host "-------------------"
