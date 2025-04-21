@@ -72,8 +72,12 @@ ComfyUI-EasyManager/   # 项目目录
     ├── repos_hf.toml # huggingface仓库地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── install.sh # 一键安装ComfyUI环境、节点依赖和模型安装
-    ├── start.sh # 启动ComfyUI,后接参数，指定端口，如：./start.sh 8188 启动ComfyUI，8188为端口号
-    ├── install_requirements.sh # 安装依赖
+    ├── start.sh # 启动ComfyUI,后接参数，指定端口，如：./start.sh 8188 启动ComfyUI，8188为端口号 
+    ├── install_requirements.sh # 安装节点依赖，repos.toml节点更新的时候运行 【可单独运行】
+    ├── install_repos_hf.sh # 下载hugging face仓库-repos_hf.toml更新时单独执行 【可单独运行】
+    ├── download.sh # 下载模型，model.toml更新时运行 【可单独运行】
+    ├── init_pytorch.sh # 初始化基础环境-修复pytorch环境,pytorch环境崩溃时运行 【可单独运行】
+    ├── tools.ps1 # 工具脚本
 ├── win/ #Windows运行脚本
     ├── config.toml #与linux/config.toml一样
     ├── repos.toml # 与linux/repos.toml一样
@@ -81,11 +85,11 @@ ComfyUI-EasyManager/   # 项目目录
     ├── models.toml # 与linux/repos.toml一样
     ├── tools.ps1 # 工具脚本
     ├── setup.ps1 # 【可单独运行】一键安装ComfyUI环境、节点依赖和模型安装
-    ├── install_requirements.ps1 # 【可单独运行】安装依赖
+    ├── install_requirements.ps1 # 【可单独运行】安装依赖，repos.toml节点更新的时候运行
     ├── start.ps1 # 【可单独运行】启动ComfyUI
-    ├── init_pytorch.ps1 # 【可单独运行】初始化基础环境-修复pytorch环境
-    ├── download.ps1 # 【可单独运行】下载模型
-    ├── install_repos_hf.ps1 # 【可单独运行】安装hugging face仓库-主要针对LLM模型
+    ├── init_pytorch.ps1 # 【可单独运行】初始化基础环境-修复pytorch环境，pytorch环境崩时运行
+    ├── download.ps1 # 【可单独运行】下载模型，model.toml更新时运行
+    ├── install_repos_hf.ps1 # 【可单独运行】安装hugging face仓库-主要针对LLM模型，repos_hf.toml更新时单独执行
 
 ```
 ### 脚本更新
