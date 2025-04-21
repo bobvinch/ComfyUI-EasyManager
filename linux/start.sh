@@ -44,6 +44,8 @@ COMFY_DIR="$ROOT_DIR/ComfyUI"
 #创建Python环境，安装依赖
 CONDA_PATH="/root/miniconda3"
 ENV_PATH="$ROOT_DIR/envs/comfyui"
+
+
 # 检查 Miniconda 是否已安装
 if [ ! -d "$CONDA_PATH" ]; then
     echo "🚀 安装 Miniconda..."
@@ -75,4 +77,32 @@ conda activate "$ENV_PATH"
 
 #启动ComfyUI
 echo "🚀 启动ComfyUI"
-python3 "$COMFY_DIR"/main.py --listen 0.0.0.0 --port "$PORT"
+
+# 启动Python进程并捕获输出
+python3 "$COMFY_DIR"/main.py --listen 0.0.0.0 --port "$PORT" 2>&1 | while read -r line
+do
+    echo "$line"  # 输出原始日志
+
+    # 检测缺失模块错误
+    if [[ "$line" =~ "ModuleNotFoundError: No module named '(.*)'" ]]; then
+        missing_module="${BASH_REMATCH[1]}"
+        echo "❌检测到缺失模块: $missing_module, 正在尝试安装..."
+
+        # 尝试安装缺失模块
+        pip install "$missing_module"
+
+        # 检查安装是否成功
+        if [ $? -eq 0 ]; then
+            echo "✅模块 $missing_module 安装成功"
+            # 这里可以添加重启逻辑(如果需要)
+        else
+            echo "无法安装模块 $missing_module"
+        fi
+    fi
+done
+
+# 如果进程退出，检查是否是因依赖问题
+if [ $? -ne 0 ]; then
+    echo "Python进程异常退出，请检查日志"
+    exit 1
+fi

@@ -4,7 +4,7 @@
 - 一键自动安装ComfyUI环境、节点、依赖和下载模型
 - 自动处理依赖冲突
 - 自动管理pytorch环境（环境崩90%都是torch环境崩）
-- 环境一致性和环境分享，只需要管理三个配置文件就能快速复制ComfyUI环境
+- 环境一致性和环境分享，只需要管理4个toml配置文件就能快速复制ComfyUI环境。自己环境复制给别人或者将Windows的环境复制到Linux上
 - 高阶：手动锁定依赖版本
 - 其他更多强大功能，后续持续更新
 
@@ -100,4 +100,4 @@ git pull
 然后再将所有的ps1文件复制到ComfyUI的同级目录直接替换原有的脚本文件，后缀为.example的文件可以不需要复制
 
 ### 提交贡献及问题反馈交流
-欢迎大家提issue，或者直接提PR，或者加群交流：[问题反馈及联系加群](https://work.weixin.qq.com/kfid/kfc1bf83fcf005d3715)
+欢迎大家提issue，或者直接提PR，或者加群交流，备注：Github ComfyUI工具：[问题反馈及联系加群](https://work.weixin.qq.com/kfid/kfc1bf83fcf005d3715)

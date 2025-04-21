@@ -21,9 +21,6 @@ $config = @{
 }
 
 
-
-
-
 $ROOT_DIR = $PSScriptRoot
 # 获取脚本所在目录
 Write-Host "脚本所在目录是: $ROOT_DIR"
