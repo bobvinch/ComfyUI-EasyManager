@@ -72,5 +72,14 @@ ComfyUI-EasyManager/   # 项目目录
     ├── repos.toml # 插件管理地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── repos_hf.toml # huggingface仓库地址配置文件，请去掉文件名的.example后缀,才会生效
     ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
+    ├── models.toml # 模型地址配置文件，请去掉文件名的.example后缀,才会生效
+    ├── tools.ps1 # 工具脚本
+    ├── setup.ps1 # 【可单独运行】一键安装ComfyUI环境、节点依赖和模型安装
+    ├── install_requirements.ps1 # 【可单独运行】安装依赖
+    ├── start.ps1 # 【可单独运行】启动ComfyUI
+    ├── init_pytorch.ps1 # 【可单独运行】初始化基础环境-修复pytorch环境
+    ├── download.ps1 # 【可单独运行】下载模型
+    ├── install_repos_hf.ps1 # 【可单独运行】安装hugging face仓库-主要针对LLM模型
+
 ```
 ### 脚本更新

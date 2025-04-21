@@ -4,13 +4,14 @@ $CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
 $ROOT_DIR = $PSScriptRoot
 
-
+# 函数：处理错误,一般只能用在主函数中
 function Handle-Error {
     param($ErrorMessage)
     Write-Host "❌ 错误：$ErrorMessage" -ForegroundColor Red
-    Write-Host "按任意键退出..."
-    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-    exit 1
+    Write-Host "`n按 Enter 键退出..." -ForegroundColor Cyan
+    do {
+        $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+    } until ($key.VirtualKeyCode -eq 13) # 13 是 Enter 键的虚拟键码
 }
 
 # 获取配置文件
@@ -50,37 +51,120 @@ function Test-ToolInstalled {
         Message = ""
     }
 
+    # 刷新环境变量
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+    # 定义常见的版本参数
+    $versionParams = @(
+        '--version',
+        '-v',
+        '-V',
+        'version',
+        '--ver',
+        '-version'
+    )
+
     try {
+        # 首先尝试直接使用 Get-Command
         $cmdInfo = Get-Command $ToolName -ErrorAction Stop
-        $result.IsInstalled = $true
-        $result.Path = $cmdInfo.Source
 
-        # 尝试获取版本信息
-        try {
-            $version = & $ToolName --version 2>&1
-            $result.Version = $version[0]
-        } catch {
-            $result.Version = "未知"
+        if (Test-Path $cmdInfo.Source) {
+            $result.IsInstalled = $true
+            $result.Path = $cmdInfo.Source
+
+            # 尝试获取版本信息
+            $versionFound = $false
+            foreach ($param in $versionParams) {
+                try {
+                    $versionOutput = & $cmdInfo.Source $param 2>&1
+                    if ($versionOutput) {
+                        # 尝试从输出中提取版本号
+                        $versionPattern = '(?i)(?:version|v)?\s*(\d+(?:\.\d+)*(?:-\w+)?)'
+                        if ($versionOutput[0] -match $versionPattern) {
+                            $result.Version = $matches[1]
+                            $versionFound = $true
+                            break
+                        } else {
+                            # 如果没有匹配到版本号格式，使用第一行输出
+                            $result.Version = $versionOutput[0]
+                            $versionFound = $true
+                            break
+                        }
+                    }
+                } catch {
+                    continue
+                }
+            }
+
+            if (-not $versionFound) {
+                $result.Version = "未知"
+            }
+
+            $result.Message = "✅ $ToolName 已安装"
+        } else {
+            throw "命令路径无效"
         }
-
-        $result.Message = "✅ $ToolName 已安装"
     }
     catch {
-        if ($ToolName -eq "choco") {
-            $chocoPath = "$env:ProgramData\chocolatey\bin\choco.exe"
-            if (Test-Path $chocoPath) {
-                $result.IsInstalled = $true
-                $result.Path = $chocoPath
-                try {
-                    $version = & $chocoPath --version 2>&1
-                    $result.Version = $version[0]
-                } catch {
-                    $result.Version = "未知"
-                }
-                $result.Message = "✅ Chocolatey 已安装"
-            } else {
-                $result.Message = "❌ Chocolatey 未安装"
+        # 如果 Get-Command 失败，尝试在常见安装路径中查找
+        $commonPaths = @(
+            "${env:ProgramFiles}\$ToolName\$ToolName.exe",
+            "${env:ProgramFiles(x86)}\$ToolName\$ToolName.exe",
+            "$env:ProgramData\chocolatey\bin\$ToolName.exe",
+            "${env:ProgramFiles}\$ToolName\bin\$ToolName.exe",
+            "${env:ProgramFiles(x86)}\$ToolName\bin\$ToolName.exe",
+            "$env:LOCALAPPDATA\Programs\$ToolName\$ToolName.exe",
+            "$env:APPDATA\$ToolName\$ToolName.exe",
+            "$env:ChocolateyInstall\bin\$ToolName.exe"
+        )
+
+        # 添加特定工具的自定义路径
+        switch ($ToolName) {
+            "choco" {
+                $commonPaths += "$env:ProgramData\chocolatey\bin\choco.exe"
             }
+            "aria2c" {
+                $commonPaths += @(
+                    "${env:ProgramFiles}\aria2\aria2c.exe",
+                    "$env:ChocolateyInstall\bin\aria2c.exe"
+                )
+            }
+            # 可以在这里添加其他特定工具的路径
+        }
+
+        $foundPath = $commonPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+        if ($foundPath) {
+            $result.IsInstalled = $true
+            $result.Path = $foundPath
+
+            # 尝试获取版本信息
+            $versionFound = $false
+            foreach ($param in $versionParams) {
+                try {
+                    $versionOutput = & $foundPath $param 2>&1
+                    if ($versionOutput) {
+                        $versionPattern = '(?i)(?:version|v)?\s*(\d+(?:\.\d+)*(?:-\w+)?)'
+                        if ($versionOutput[0] -match $versionPattern) {
+                            $result.Version = $matches[1]
+                            $versionFound = $true
+                            break
+                        } else {
+                            $result.Version = $versionOutput[0]
+                            $versionFound = $true
+                            break
+                        }
+                    }
+                } catch {
+                    continue
+                }
+            }
+
+            if (-not $versionFound) {
+                $result.Version = "未知"
+            }
+
+            $result.Message = "✅ $ToolName 已安装"
         } else {
             $result.Message = "❌ $ToolName 未安装"
         }
@@ -192,36 +276,70 @@ function Install_Aria2 {
         Write-Host $aria2Status.Message -ForegroundColor Green
         Write-Host "版本: $($aria2Status.Version)"
         Write-Host "路径: $($aria2Status.Path)"
+        return # 已安装，无需继续
+    }
+
+    Write-Host "============================" -ForegroundColor Cyan
+    Write-Host " 开始安装多线程下载工具 aria2" -ForegroundColor Cyan
+    Write-Host "============================" -ForegroundColor Cyan
+    # 初始化 winget
+    Initialize-Winget
+
+    # 标记是否已成功安装
+    $installedSuccessfully = $false
+
+    # 1. 尝试使用 winget 安装
+    Write-Host "⚙️ 正在尝试使用 winget 安装 aria2c..." -ForegroundColor Cyan
+    $wingetPath = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetPath) {
+        Write-Host "  检测到 winget，尝试安装..."
+        try {
+            # 使用 winget 安装，--accept* 参数用于非交互式安装
+            winget install --id aria2.aria2 --source winget --accept-package-agreements --accept-source-agreements --silent
+
+            # 刷新当前会话的环境变量
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            # 等待一小段时间确保安装完成和 PATH 更新
+            Start-Sleep -Seconds 5
+            # 重新检查安装状态
+            $aria2Status = Test-ToolInstalled -ToolName 'aria2c'
+            if ($aria2Status.IsInstalled) {
+                Write-Host "✅ 使用 winget 成功安装 aria2c。" -ForegroundColor Green
+                Write-Host "版本: $($aria2Status.Version)"
+                Write-Host "路径: $($aria2Status.Path)"
+                $installedSuccessfully = $true
+            } else {
+                Write-Host "⚠️ 使用 winget 安装 aria2c 后仍未检测到，将尝试 Chocolatey。" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "⚠️ 使用 winget 安装 aria2c 时出错: $_" -ForegroundColor Yellow
+            Write-Host "  将尝试使用 Chocolatey 安装。" -ForegroundColor Yellow
+        }
     } else {
+        Write-Host "  未检测到 winget，跳过 winget 安装，使用choco 安装aria2c。" -ForegroundColor DarkGray
+    }
 
-        Write-Host "============================" -ForegroundColor Cyan
-        Write-Host " 开始安装多线程下载工具" -ForegroundColor Cyan
-        Write-Host "============================" -ForegroundColor Cyan
-
-        Write-Host "⚙️ 正在安装 aria2c..." -ForegroundColor Cyan
+    # 2. 如果 winget 安装失败或未尝试，则使用 Chocolatey 安装
+    if (-not $installedSuccessfully) {
+        Write-Host "⚙️ 正在尝试使用 Chocolatey 安装 aria2c..." -ForegroundColor Cyan
 
         # 检查 Chocolatey
         $chocoStatus = Test-ToolInstalled -ToolName 'choco'
         if (-not $chocoStatus.IsInstalled) {
             Write-Host "⚙️ 正在安装 Chocolatey..." -ForegroundColor Cyan
-
             # 检查管理员权限
             if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
                 Write-Error "需要管理员权限才能安装 Chocolatey。请使用管理员身份运行此脚本。"
-                throw "权限不足" # 或者根据需要返回 $false 或退出
+                throw "权限不足"
             }
-
             try {
                 # 设置执行策略 (进程级别，更安全)
                 Set-ExecutionPolicy Bypass -Scope Process -Force
                 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-
                 # 执行官方安装命令
                 Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
                 # 安装后立即刷新环境变量，以便在当前会话中找到 choco
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
                 # 重新检查 Chocolatey 安装状态
                 $chocoStatus = Test-ToolInstalled -ToolName 'choco'
                 if ($chocoStatus.IsInstalled) {
@@ -232,7 +350,7 @@ function Install_Aria2 {
                         Write-Host "✅ Chocolatey 安装完成 (路径已确认)" -ForegroundColor Green
                         # 手动将路径添加到当前会话
                         $env:Path += ";$env:ProgramData\chocolatey\bin"
-                        $chocoStatus = $true # 假设安装成功以便继续
+                        $chocoStatus = @{ IsInstalled = $true; Path = "$env:ProgramData\chocolatey\bin\choco.exe" } # 模拟 Test-ToolInstalled 的输出
                     } else {
                         Write-Host "❌ Chocolatey 安装失败" -ForegroundColor Red
                         throw "Chocolatey 安装失败"
@@ -245,42 +363,53 @@ function Install_Aria2 {
         } else {
             # 如果 Chocolatey 已安装，打印状态信息
             Write-Host "✅ Chocolatey 已安装。" -ForegroundColor Green
-            # 确保 choco 在当前会话的 PATH 中 (有时新打开的会话可能没有立即更新)
-            $chocoPath = Split-Path -Path ($chocoStatus.Path) -Parent -ErrorAction SilentlyContinue
-            if ($chocoPath -and ($env:Path -notlike "*$chocoPath*")) {
-                $env:Path += ";$chocoPath"
+            # 确保 choco 在当前会话的 PATH 中
+            $chocoPathDir = Split-Path -Path ($chocoStatus.Path) -Parent -ErrorAction SilentlyContinue
+            if ($chocoPathDir -and ($env:Path -notlike "*$chocoPathDir*")) {
+                $env:Path += ";$chocoPathDir"
                 Write-Host "  (已将 Chocolatey 路径添加到当前会话 PATH)" -ForegroundColor DarkGray
             }
         }
 
-        # 确保 $chocoStatus 为 $true 或具有 IsInstalled 属性
-        if ($chocoStatus -is [hashtable] -and $chocoStatus.IsInstalled -or $chocoStatus -eq $true) {
-            # 使用 choco 安装 aria2 (现在应该能直接调用 choco)
+        # 确保 $chocoStatus 表示已安装
+        if (($chocoStatus -is [hashtable] -and $chocoStatus.IsInstalled) -or ($chocoStatus -eq $true)) {
+            # 使用 choco 安装 aria2
             Write-Host "⚙️ 正在通过 Chocolatey 安装 aria2..." -ForegroundColor Cyan
             try {
-                # 使用 choco 命令，它应该在 PATH 中
+                # 使用 choco 命令
                 choco install aria2 -y --force
                 # 刷新环境变量以包含 aria2
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+                # 等待一小段时间
+                Start-Sleep -Seconds 5
+                # 再次检查 aria2 安装状态
+                $aria2Status = Test-ToolInstalled -ToolName 'aria2c'
+                if ($aria2Status.IsInstalled) {
+                    $installedSuccessfully = $true
+                }
             } catch {
                 Write-Host "❌ 使用 Chocolatey 安装 aria2 时出错: $_" -ForegroundColor Red
-                throw $_
-            }
-
-            # 验证安装
-            $finalStatus = Test-ToolInstalled -ToolName 'aria2c'
-            if ($finalStatus.IsInstalled) {
-                Write-Host $finalStatus.Message -ForegroundColor Green
-                Write-Host "版本: $($finalStatus.Version)"
-                Write-Host "路径: $($finalStatus.Path)"
-            } else {
-                Write-Host $finalStatus.Message -ForegroundColor Red
-                throw "aria2c 安装失败"
+                # 不再抛出错误，而是继续到最后的检查
             }
         } else {
-            Write-Host "❌ 未找到 Chocolatey，无法安装 aria2c。" -ForegroundColor Red
-            throw "依赖项 Chocolatey 未满足"
+            Write-Host "❌ 未找到 Chocolatey 或安装失败，无法通过 Chocolatey 安装 aria2c。" -ForegroundColor Red
         }
+    }
+
+    # 最终验证安装结果
+    if ($installedSuccessfully) {
+        # 如果上面已经打印过成功信息，这里可以不再重复打印，或者只打印最终确认
+        Write-Host "✅ aria2c 已成功安装并可用。" -ForegroundColor Green
+        # 可以选择再次获取状态并打印
+        $finalStatus = Test-ToolInstalled -ToolName 'aria2c'
+        if ($finalStatus.IsInstalled) {
+            Write-Host "版本: $($finalStatus.Version)"
+            Write-Host "路径: $($finalStatus.Path)"
+        }
+    } else {
+        Write-Host "❌ 未能成功安装 aria2c。请检查错误信息并尝试手动安装。" -ForegroundColor Red
+        # 可以选择抛出错误，让脚本停止
+        # throw "aria2c 安装失败"
     }
 }
 
@@ -384,5 +513,87 @@ function Start-FileDownloadWithAria2 {
     } catch {
         Write-Host "❌ 下载失败: $_" -ForegroundColor Red
         return $false
+    }
+}
+
+# 安装 Winget
+function Initialize-Winget {
+    # 检查是否已安装 winget
+    $wingetPath = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wingetPath) {
+        Write-Host "✅ winget 已安装" -ForegroundColor Green
+        Write-Host "版本: $((winget --version).Trim())"
+        Write-Host "路径: $($wingetPath.Path)"
+        return $true
+    }
+
+    Write-Host "============================" -ForegroundColor Cyan
+    Write-Host " 开始安装 winget" -ForegroundColor Cyan
+    Write-Host "============================" -ForegroundColor Cyan
+
+    # 检查系统版本
+    $osVersion = [System.Environment]::OSVersion.Version
+    if ($osVersion.Major -lt 10) {
+        Write-Host "❌ winget 需要 Windows 10 或更高版本" -ForegroundColor Red
+        return $false
+    }
+
+    # 检查是否安装了应用安装程序
+    $appInstaller = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller" -ErrorAction SilentlyContinue
+    if (-not $appInstaller) {
+        Write-Host "⚙️ 正在安装 App Installer..." -ForegroundColor Cyan
+        try {
+            # 下载最新的 App Installer
+            $releases = "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
+            $msixBundleUrl = (Invoke-RestMethod -Uri $releases).assets |
+                    Where-Object { $_.name -like "*.msixbundle" } |
+                    Select-Object -ExpandProperty browser_download_url
+
+            $tempFile = Join-Path $env:TEMP "Microsoft.DesktopAppInstaller.msixbundle"
+            Invoke-WebRequest -Uri $msixBundleUrl -OutFile $tempFile
+
+            # 安装 App Installer
+            Add-AppxPackage -Path $tempFile
+
+            # 清理临时文件
+            Remove-Item $tempFile -Force
+
+            # 刷新环境变量
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+            # 等待安装完成
+            Start-Sleep -Seconds 5
+
+            # 验证安装
+            $wingetCheck = Get-Command winget -ErrorAction SilentlyContinue
+            if ($wingetCheck) {
+                Write-Host "✅ winget 安装成功" -ForegroundColor Green
+                Write-Host "版本: $((winget --version).Trim())"
+                Write-Host "路径: $($wingetCheck.Path)"
+                return $true
+            } else {
+                Write-Host "⚠️ winget 已安装但需要重启 PowerShell 才能生效" -ForegroundColor Yellow
+                return $true
+            }
+        }
+        catch {
+            Write-Host "❌ winget 安装失败: $_" -ForegroundColor Red
+            Write-Host "请尝试从 Microsoft Store 手动安装 'App Installer'" -ForegroundColor Yellow
+            return $false
+        }
+    } else {
+        Write-Host "✅ App Installer 已安装，正在更新..." -ForegroundColor Green
+        try {
+            # 尝试更新 App Installer
+            Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" |
+                    Invoke-CimMethod -MethodName UpdateScanMethod
+
+            Write-Host "✅ App Installer 更新检查完成" -ForegroundColor Green
+            return $true
+        }
+        catch {
+            Write-Host "⚠️ App Installer 更新检查失败: $_" -ForegroundColor Yellow
+            return $true # 返回 true 因为 winget 仍然可用
+        }
     }
 }

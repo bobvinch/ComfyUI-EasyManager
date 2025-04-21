@@ -171,13 +171,6 @@ function Install-HuggingfaceRepos {
                             continue
                         }
 
-                        # --- 强制更新逻辑结束 ---
-
-                    } else {
-                        # 目录包含其他非隐藏文件/目录，跳过强制更新以防数据丢失
-                        Write-Host "⚠️ 仓库目录包含非隐藏文件/目录，跳过强制更新以防覆盖本地更改: $($repo.description)" -ForegroundColor Yellow
-                        # 你可以在这里选择其他操作，比如尝试非强制 pull，或者像现在这样直接跳过
-                        continue
                     }
                 } else {
                     Write-Host "📦 克隆仓库..." -ForegroundColor Cyan
