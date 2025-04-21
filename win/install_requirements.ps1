@@ -4,7 +4,8 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # 导入TOML解析函数
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptPath "parse_toml.ps1")
-
+#  引入工具函数
+. (Join-Path $ROOT_DIR "tools.ps1")
 # 设置镜像源
 Write-Host "🚀 设置默认镜像源为阿里云镜像..." -ForegroundColor Cyan
 $PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
@@ -50,8 +51,7 @@ if ($proxyEnabled -eq 1 -and $sysProxy) {
     Write-Host "⚠️ 未检测到有效的代理设置" -ForegroundColor Yellow
 }
 
-#  引入工具函数
-. (Join-Path $ROOT_DIR "tools.ps1")
+
 
 
 # 安装ComfyUI环境依赖

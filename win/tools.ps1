@@ -1053,10 +1053,17 @@ function Test-DependencyConflicts {
             $installSpec = "$($package.Name)==$($package.Version)"
             Write-Host "📥 安装 $installSpec..." -ForegroundColor Cyan
 
-            $installResult = & $condaPipPath install $installSpec 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "⚠️ 安装 $installSpec 失败" -ForegroundColor Yellow
-
+            try
+            {
+                $installResult = & $condaPipPath install $installSpec 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "⚠️ 安装 $installSpec 失败" -ForegroundColor Yellow
+                }
+            }
+            catch
+            {
+                Write-Host "⚠️ 安装 $installSpec 失败,可能需要手动指定版本或者手动安装" -ForegroundColor Red
+                continue
             }
         }
 
