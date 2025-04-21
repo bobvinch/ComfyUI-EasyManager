@@ -1,8 +1,13 @@
-﻿
+﻿$ROOT_DIR = $PSScriptRoot
 # 设置Conda路径
 $CONDA_PATH = "C:\Users\$env:USERNAME\miniconda3"
 $ENV_PATH = Join-Path $ROOT_DIR "envs\comfyui"
-$ROOT_DIR = $PSScriptRoot
+$condaPipPath = "$ENV_PATH\Scripts\pip.exe"
+$condaPythonPath = "$ENV_PATH\python.exe"
+$COMFY_DIR = Join-Path $ROOT_DIR "ComfyUI"
+
+# 引入TOML解析函数
+. (Join-Path $ROOT_DIR "parse_toml.ps1")
 
 # 函数：处理错误,一般只能用在主函数中
 function Handle-Error {
@@ -597,3 +602,788 @@ function Initialize-Winget {
         }
     }
 }
+
+function Start_DownloadUserConfigModels {
+    param (
+        [Parameter(Mandatory = $false)]
+        [Boolean]$isInteractive = $false
+    )
+    # 下载模型
+    # 使用公共函数解析TOML
+    $modelsFile = Join-Path $ROOT_DIR "models.toml"
+
+    Write-Host "开始解析模型配置: $modelsFile" -ForegroundColor Cyan
+    # 创建空数组
+    $models = @{}
+
+    try {
+        if (Test-Path $modelsFile) {
+            $models = Convert-FromToml $modelsFile
+        } else {
+            Write-Host "未找到模型配置文件，使用默认空配置" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "模型配置解析出现问题，使用默认空配置" -ForegroundColor Yellow
+    }
+    if ($models -and $models.models -and $models.models.Count -gt 0) {
+        # 定义模型的HF_TOKEN
+        $HF_TOKEN = Get-HF_TOKEN
+
+        foreach ($model in $models.models) {
+            Write-Host "📦 处理模型: $($model.id)" -ForegroundColor Cyan
+
+            $targetDir = Join-Path $COMFY_DIR $model.dir
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force
+            }
+
+            # 调用 Start-FileDownload 函数
+            $params = @{
+                URL = $model.url
+                DOWNLOAD_DIR = $targetDir
+            }
+            if($HF_TOKEN){
+                $params.HEADER = "Authorization: Bearer $HF_TOKEN"
+            }
+
+            if ($model.fileName) {
+                $params.FILENAME = $model.fileName
+            }
+            # 调用工具函数下载模型
+            Start-FileDownloadWithAria2 @params
+        }
+    }
+    else
+    {
+        Write-Host "未找到模型配置，跳过下载" -ForegroundColor Yellow
+    }
+
+    if ($isInteractive) {
+        Write-Host "`n按 Enter 键退出..." -ForegroundColor Cyan
+        do {
+            $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        } until ($key.VirtualKeyCode -eq 13) # 13 是 Enter 键的虚拟键码
+    }
+}
+
+
+
+# 定义依赖安装函数
+function Install-Requirements {
+    param (
+        [string]$ReqFile,
+        [string]$Context
+    )
+
+    if (-not (Test-Path $ReqFile)) {
+        Write-Host "⚠️ 未找到依赖文件: $ReqFile" -ForegroundColor Yellow
+        return $false
+    }
+
+    Write-Host "📦 检查${Context}依赖..." -ForegroundColor Cyan
+
+    # 获取已安装的包列表
+    Write-Host "🔍 获取已安装包列表..." -ForegroundColor Cyan
+    $installedPackages = @{}
+    & $condaPipPath list --format=freeze | ForEach-Object {
+        if ($_ -match '^([^=]+)==.*$') {
+            $installedPackages[$Matches[1]] = $true
+        }
+    }
+
+    # 创建需要安装的包列表
+    $toInstall = @()
+
+    # 读取requirements文件
+    Get-Content $ReqFile | ForEach-Object {
+        $package = $_.Trim()
+
+        # 跳过空行和注释行
+        if ($package -and -not $package.StartsWith("#")) {
+            # 提取包名
+            if ($package -match '^([^=>< ]+)') {
+                $pkgName = $Matches[1]
+
+                if ($installedPackages.ContainsKey($pkgName)) {
+                    Write-Host "✅ $pkgName 已安装，跳过" -ForegroundColor Green
+                } else {
+                    Write-Host "📝 添加 $pkgName 到安装列表" -ForegroundColor Cyan
+                    $toInstall += $package
+                }
+            }
+        }
+    }
+
+    # 定义要排除的包名，torch相关的包通过conda管理，避免其他包被误安装
+    $excludePackages = @(
+        'torch',
+        'torchvision',
+        'torchaudio'
+    )
+
+    # 过滤torch相关的包和版本控制
+    $toInstall = $toInstall | ForEach-Object {
+        $package = $_
+        # 去除 Python 版本约束后缀 (如 package>=3.6)
+        $packageName = ($package -split '[<>=]')[0].Trim()
+
+        # 检查是否是需要排除的包
+        if ($excludePackages | Where-Object { $packageName -like "*$_*" }) {
+            return $null
+        }
+
+        # 检查是否在 TOML 配置中有指定版本
+        $configVersion = $config.packages.$packageName
+        if ($configVersion) {
+            # 使用配置文件中指定的版本
+            return $configVersion
+            Write-Host "📝 包强制版本控制，添加 $packageName 到安装列表" -ForegroundColor Cyan
+        }
+        # 如果没有在配置中指定版本，使用原始包名
+        return $package
+    } | Where-Object { $_ -ne $null }
+
+
+    # 批量安装未安装的包
+    if ($toInstall.Count -gt 0) {
+        # 过滤掉 PyTorch 相关的包
+        $toInstall = $toInstall | Where-Object {
+            $_ -notmatch 'torch|torchvision|torchaudio'
+        }
+
+        if ($toInstall.Count -gt 0) {
+            Write-Host "� 开始安装缺失的依赖..." -ForegroundColor Cyan
+            $total = $toInstall.Count
+            $current = 0
+            try {
+                if ($PIP_MIRROR) {
+                    & $condaPipPath install $toInstall -i $PIP_MIRROR --no-warn-script-location  --progress-bar on
+
+                } else {
+
+                    & $condaPipPath install $toInstall --no-cache-dir --no-warn-script-location --progress-bar on
+
+                }
+                Write-Host "✅ 所有依赖安装完成" -ForegroundColor Green
+            } catch {
+                Write-Host "❌ 部分依赖安装失败: $_" -ForegroundColor Red
+                return $false
+            }
+        } else {
+            Write-Host "✅ 无需安装其他依赖" -ForegroundColor Green
+        }
+    }
+
+    Write-Host "✅ ${Context}依赖检查完成" -ForegroundColor Green
+    return $true
+}
+
+function Get-CondaPackageInfo {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$EnvPath,
+
+        [Parameter(Mandatory=$true)]
+        [string]$PackageName
+    )
+
+    try {
+        # 使用 pip show 获取详细包信息
+        $packageInfo = & $condaPipPath show $PackageName --target $EnvPath 2>$null
+
+        if ($LASTEXITCODE -eq 0 -and $packageInfo) {
+            # 提取版本信息
+            $versionLine = $packageInfo | Select-String "^Version:\s*(.+)$"
+            $version = if ($versionLine) {
+                $versionLine.Matches.Groups[1].Value.Trim()
+            } else {
+                $null
+            }
+
+            return @{
+                IsInstalled = $true
+                Version = $version
+                BuildString = $null
+                Channel = $null
+            }
+        } else {
+            return @{
+                IsInstalled = $false
+                Version = $null
+                BuildString = $null
+                Channel = $null
+            }
+        }
+    }
+    catch {
+        Write-Host "❌ 获取包信息时出错: $_" -ForegroundColor Red
+        return @{
+            IsInstalled = $false
+            Version = $null
+            BuildString = $null
+            Channel = $null
+        }
+    }
+}
+
+# 从numpy == 1.36.4 字符串中提取包名和版本号
+function Get-PackageVersionInfo {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$VersionString
+    )
+
+    try {
+        # 清理输入字符串
+        $VersionString = $VersionString.Trim()
+
+        # 匹配版本号和操作符（支持操作符前后可选的空格）
+        if ($VersionString -match "(\S+)\s*([<>=]=?)\s*(\S+)") {
+            return @{
+                PackageName = $Matches[1].Trim()    # 包名并清理空格
+                Operator = $Matches[2].Trim()       # 操作符并清理空格
+                Version = $Matches[3].Trim()        # 版本号并清理空格
+                Success = $true
+            }
+        }
+
+        # 如果没有匹配到操作符，返回原始包名
+        return @{
+            PackageName = $VersionString
+            Operator = $null
+            Version = $null
+            Success = $false
+        }
+    }
+    catch {
+        Write-Host "❌ 版本字符串解析失败: $_" -ForegroundColor Red
+        return $null
+    }
+}
+
+# 版本比较函数
+function Compare-Versions {
+    param (
+        [string]$Version1,
+        [string]$Version2
+    )
+
+    try {
+        # 提取纯数字版本部分
+        $v1Numbers = ($Version1 -split '[a-zA-Z]')[0]
+        $v2Numbers = ($Version2 -split '[a-zA-Z]')[0]
+
+        # 转换为版本对象
+        $v1 = [System.Version]$v1Numbers
+        $v2 = [System.Version]$v2Numbers
+
+        # 如果数字部分相同，比较后缀
+        if ($v1 -eq $v2) {
+            $v1Suffix = ($Version1 -replace '[0-9\.]', '').ToLower()
+            $v2Suffix = ($Version2 -replace '[0-9\.]', '').ToLower()
+
+            # 处理后缀比较（rc < '' < beta < alpha）
+            $suffixOrder = @{
+                'rc' = 3
+                '' = 4
+                'b' = 1
+                'beta' = 1
+                'a' = 0
+                'alpha' = 0
+            }
+
+            $v1Value = $suffixOrder[$v1Suffix]
+            $v2Value = $suffixOrder[$v2Suffix]
+
+            return $v1Value.CompareTo($v2Value)
+        }
+
+        # 返回数字版本的比较结果
+        return $v1.CompareTo($v2)
+    }
+    catch {
+        Write-Host "❌ 版本比较失败: $_" -ForegroundColor Red
+        return 0
+    }
+}
+
+function Test-PackageUpgradeNeeded {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$VersionRequirement,
+
+        [Parameter(Mandatory=$true)]
+        [string]$CurrentVersion
+    )
+
+    try {
+        # 清理版本字符串
+        $VersionRequirement = $VersionRequirement.Trim()
+        $CurrentVersion = $CurrentVersion.Trim()
+
+
+        # 修改正则表达式，使用非贪婪匹配并明确指定操作符
+        if ($VersionRequirement -match "(\S+?)\s*(==|>=|<=|>|<)\s*(\S+)") {
+            $packageName = $Matches[1].Trim()
+            $operator = $Matches[2].Trim()
+            $requiredVersion = $Matches[3].Trim()
+
+
+            $compareResult = Compare-Versions $CurrentVersion $requiredVersion
+
+            $needUpgrade = switch ($operator) {
+                "==" { $compareResult -ne 0 }    # 不相等时需要更新
+                ">=" { $compareResult -lt 0 }    # 当前版本小于要求版本时需要更新
+                "<=" { $compareResult -gt 0 }    # 当前版本大于要求版本时需要更新
+                ">" { $compareResult -le 0 }     # 当前版本小于等于要求版本时需要更新
+                "<" { $compareResult -ge 0 }     # 当前版本大于等于要求版本时需要更新
+            }
+            return $needUpgrade
+        }
+        # 如果没有操作符，且当前版本不为空，则不需要升级
+        elseif ($CurrentVersion) {
+            return $false
+        }
+        # 如果没有操作符，且当前版本为空，则需要安装
+        else {
+            return $true
+        }
+    }
+    catch {
+        Write-Host "❌ 版本比较出错: $_" -ForegroundColor Red
+        return $false
+    }
+}
+
+# 遍历自定义节点目录安装依赖
+function Install-CustomNodeRequirements {
+
+    $customNodesPath = Join-Path $COMFY_DIR "custom_nodes"
+
+    Write-Host "开始检查自定义节点依赖..." -ForegroundColor Cyan
+
+    # 确保目录存在
+    if (-not (Test-Path $CustomNodesPath)) {
+        Write-Host "自定义节点目录不存在: $CustomNodesPath" -ForegroundColor Red
+        return
+    }
+
+    # 获取所有子目录
+    $nodeFolders = Get-ChildItem -Path $CustomNodesPath -Directory
+
+    Write-Host "共有" $nodeFolders.Count "个自定义节点，开始遍历自定义节点目录..." -ForegroundColor Cyan
+
+
+    foreach ($folder in $nodeFolders) {
+        # 重新检查和分析依赖分件
+        #        conda run -p $ENV_PATH pipreqs $folder.FullName --force --noversion
+
+        $reqFile = Join-Path $folder.FullName "requirements.txt"
+
+        if (Test-Path $reqFile) {
+            Write-Host "发现依赖文件: $($folder.Name)" -ForegroundColor Green
+
+            try {
+                Install-Requirements -ReqFile $reqFile -Context $folder.Name
+            } catch {
+                Write-Host "安装依赖失败 ($($folder.Name)): $_" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "跳过 $($folder.Name): 未找到 requirements.txt" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host "自定义节点依赖检查完成" -ForegroundColor Cyan
+}
+
+# 检查依赖冲突
+function Test-DependencyConflicts {
+    Write-Host "🔍 检查依赖冲突..." -ForegroundColor Cyan
+
+    $noConflictsOutput="No broken requirements found."
+
+    # 执行 pip check 并捕获输出
+    $checkOutput = & $condaPipPath check 2>&1
+
+    Write-Host "🔍 检测依赖冲突的检查结果输出："$checkOutput
+
+    # 如果没有输出，说明没有依赖问题
+    if (-not $checkOutput -or $checkOutput -eq $noConflictsOutput) {
+        Write-Host "✅ 所有依赖关系正常" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "⚠️ 检测到依赖冲突，开始分析..." -ForegroundColor Yellow
+    $toUpgrade = @()
+
+    # 解析每一行输出
+    foreach ($line in $checkOutput) {
+        # 更新正则表达式以更精确匹配 Windows pip check 输出格式
+        if ($line -match "([^\s]+)\s+([^\s]+)\s+has\s+requirement\s+([^\s]+)==([^,\s]+),\s+but\s+you\s+have\s+([^\s]+)\s+([^\s]+)") {
+            $parentPkg = $matches[1]    # 父包名
+            $parentVer = $matches[2]    # 父包版本
+            $pkgName = $matches[3]      # 依赖包名
+            $requiredVer = $matches[4]  # 需求版本
+            $currentPkg = $matches[5]   # 当前包名（验证用）
+            $currentVer = $matches[6]   # 当前版本
+
+            # 验证包名匹配
+            if ($pkgName -eq $currentPkg) {
+                Write-Host "📦 检测到版本冲突: $pkgName" -ForegroundColor Yellow
+                Write-Host "   - 当前版本: $currentVer" -ForegroundColor White
+                Write-Host "   - 需求版本: ==$requiredVer" -ForegroundColor White
+                Write-Host "   - 来自包: $parentPkg $parentVer" -ForegroundColor White
+
+                $toUpgrade += @{
+                    Name = $pkgName
+                    Version = $requiredVer
+                }
+            }
+        }
+    }
+
+    # 执行修复
+    if ($toUpgrade.Count -gt 0) {
+        Write-Host "🔧 开始修复依赖问题..." -ForegroundColor Cyan
+
+        foreach ($package in $toUpgrade) {
+            Write-Host "🗑️ 卸载 $($package.Name)..." -ForegroundColor Yellow
+            & $condaPipPath uninstall -y $package.Name
+
+            $installSpec = "$($package.Name)==$($package.Version)"
+            Write-Host "📥 安装 $installSpec..." -ForegroundColor Cyan
+
+            try
+            {
+                $installResult = & $condaPipPath install $installSpec 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "⚠️ 安装 $installSpec 失败" -ForegroundColor Yellow
+                }
+            }
+            catch
+            {
+                Write-Host "⚠️ 安装 $installSpec 失败,可能需要手动指定版本或者手动安装" -ForegroundColor Red
+                continue
+            }
+        }
+
+        # 最终检查
+        $finalCheck = & $condaPipPath check 2>&1
+        if ($finalCheck -match $noConflictsOutput -or -not $finalCheck) {
+            Write-Host "✨ 所有依赖问题已修复" -ForegroundColor Green
+        }
+        else {
+            Write-Host "⚠️ 仍存在依赖问题，可能需要手动处理" -ForegroundColor Red
+            Write-Host $finalCheck
+        }
+    }
+    else {
+        Write-Host "✨ 未检测到需要修复的依赖" -ForegroundColor Green
+    }
+}
+
+# 安装用户自定义依赖
+function Install-UserDefinedRequirements {
+    if(Test-Path $configFile){
+        $config = Convert-FromToml $configFile
+        #将packages里的包，全部添加到toInstall中
+        if ($config.packages) {
+            $config.packages | Get-Member -MemberType NoteProperty | ForEach-Object {
+                $packageName = $_.Name
+                $versionString = $config.packages.$packageName
+                #判断是否已经安装和安装的版本是否一致
+                $isInstalled =$false
+                $versionOld = ''
+                try
+                {
+                    $installedInfo = & $condaPipPath show $packageName 2>$null
+                    $installedVersion = ($installedInfo | Select-String "^Version:\s*(.+)$").Matches.Groups[1].Value
+                    if ($installedVersion) {
+                        $isInstalled = $true
+                        $versionOld = $installedVersion
+                    }
+                    else {
+                        $isInstalled = $false
+                    }
+                }
+                catch
+                {
+                    $isInstalled = $false
+                }
+
+                Write-Host "📦 包信息: "$packageName"安装状态：" $isInstalled
+
+                if ($versionString) {
+                    # version格式是sympy==1.13.1或者sympy>=1.13.1格式，需要处理获取纯的版本号
+                    $versionObj = Get-PackageVersionInfo -VersionString $versionString
+                    $versionNew = $versionObj.Version
+                    $needUpdate =Test-PackageUpgradeNeeded -CurrentVersion $versionOld -VersionRequirement $versionString
+
+                    if($isInstalled -and -not $needUpdate){
+                        Write-Host "📦 包已经安装，且版本一致，跳过安装: 包名: $packageName, 版本: $versionNew" -ForegroundColor Green
+                        return
+                    }
+                    # 强制更新
+                    Write-Host "📦 正在强制更新安装包: 包名: $packageName,旧版本:$versionOld, 新版本: $versionNew" -ForegroundColor Yellow
+                    & $condaPipPath uninstall $packageName --yes
+                    & $condaPipPath install $versionString  --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                } else {
+                    if($isInstalled){
+                        Write-Host "📦 包已经安装，跳过安装: 包名: $packageName" -ForegroundColor Green
+                        return
+                    }
+                    Write-Host "📦 正在安装包: 包名: $packageName" -ForegroundColor Yellow
+                    & $condaPipPath install $packageName  --force-reinstall --no-deps --upgrade --no-cache-dir --progress-bar on
+                }
+            }
+        }
+    }
+
+}
+
+
+
+
+# 初始化下载工具
+function Initialize-DownloadTools {
+    # 检查必要工具
+    $tools = @{
+        "aria2c" = {
+            choco install aria2 -y
+        }
+        "git-lfs" = {
+            choco install git-lfs -y
+            git lfs install
+        }
+    }
+    # 读取 TOML 文件
+    $REPOS_FILE = Join-Path $ROOT_DIR "repos_hf.toml"
+    if (-not (Test-Path $REPOS_FILE)) {
+        Write-Host "❌ 未找到huggingface 仓库配置文件：$REPOS_FILE" -ForegroundColor Red
+    }
+    else
+    {
+        # 只有在配置了仓库的情况下才检查并安装必要工具，减少初次启动的错误
+        foreach ($tool in $tools.Keys)
+        {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue))
+            {
+                Write-Host "⚙️ 安装 $tool..." -ForegroundColor Cyan
+                & $tools[$tool]
+            }
+        }
+    }
+}
+
+# 执行安装仓库
+function Install-HuggingfaceRepos {
+    param (
+        [Parameter(Mandatory = $false)]
+        [Boolean]$isInteractive = $false
+    )
+
+    # 安装工具
+    Initialize-DownloadTools
+
+    # 读取 TOML 文件
+    $REPOS_FILE = Join-Path $ROOT_DIR "repos_hf.toml"
+    if (-not (Test-Path $REPOS_FILE)) {
+        Write-Host "❌ 未找到huggingface 仓库配置文件：$REPOS_FILE" -ForegroundColor Red
+    }
+    else
+    {
+        # 检查并安装必要工具
+        foreach ($tool in $tools.Keys) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+                Write-Host "⚙️ 安装 $tool..." -ForegroundColor Cyan
+                & $tools[$tool]
+            }
+        }
+
+        # 获取 HF_TOKEN
+        $HF_TOKEN = Get-HF_TOKEN
+
+        # 解析 TOML 文件
+        $repos = Convert-FromToml $REPOS_FILE
+        # 获取配置文件
+
+        if($HF_TOKEN){
+            # 配置 git 凭证
+            git config --global credential.helper store
+            git config --global init.defaultBranch main
+            "https://USER:${HF_TOKEN}@huggingface.co" | Out-File -FilePath (Join-Path $HOME ".git-credentials")
+        }
+
+
+        foreach ($repo in $repos.repos) {
+            $repo_name = Split-Path $repo.url -Leaf
+            $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
+
+            # 创建目标目录
+            New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
+
+            # 保存当前目录
+            $previousLocation = Get-Location
+            Set-Location $fullPath
+
+            # 保存当前环境变量值 (如果存在)
+            $oldSkipSmudge = $env:GIT_LFS_SKIP_SMUDGE
+            try
+            {
+                Write-Host "📦 开始处理: $($repo.description)" -ForegroundColor Cyan
+                $repo_name = Split-Path $repo.url -Leaf
+                $fullPath = Join-Path $COMFY_DIR "$($repo.local_path)/$repo_name"
+
+                #格式化路径
+                $gitSafePath = $fullPath -replace '\\', '/'
+                # 确保驱动器号大写 (如果路径包含驱动器号)
+                if ($gitSafePath -match '^[a-z]:') {
+                    $gitSafePath = $gitSafePath.Substring(0, 1).ToUpper() + $gitSafePath.Substring(1)
+                }
+
+                Write-Host " 仓库路径: $gitSafePath" -ForegroundColor Cyan
+
+
+                # 设置环境变量以跳过 LFS 下载
+                $env:GIT_LFS_SKIP_SMUDGE = 1
+
+                # 兼容移动硬盘运行
+                #                git config --global --add safe.directory $gitSafePath
+                if (Test-Path (Join-Path $fullPath ".git")) {
+                    Write-Host "🔄 仓库已存在，检查目录内容..." -ForegroundColor Cyan
+
+                    # 获取目录下所有项 (包括隐藏的)，但不递归 (-Depth 0)
+                    $items = Get-ChildItem -Path $fullPath -Force -Depth 0
+
+                    # 过滤掉 .git 目录本身 和 其他隐藏项 (名字以.开头的文件或目录)
+                    $nonHiddenUserItems = $items | Where-Object { $_.Name -ne ".git" -and -not $_.Name.StartsWith(".") }
+
+                    # 检查过滤后的列表是否为空
+                    if ($nonHiddenUserItems.Count -eq 0) {
+
+                        Write-Host "  目录仅包含 .git 或隐藏项，执行强制更新..."
+
+                        # --- 强制更新逻辑 (fetch + reset) ---
+                        Write-Host "  Fetching updates..."
+                        git -C $fullPath fetch origin --force --tags --prune --progress --depth=1
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "❌ Fetch 失败: $($repo.description)，Git 退出码: $LASTEXITCODE" -ForegroundColor Red
+                            continue
+                        }
+
+                        # 检查是否存在 index.lock 文件
+                        # 检查是否存在 index.lock 文件
+                        $lockFilePath = Join-Path $fullPath ".git/index.lock"
+                        if (Test-Path $lockFilePath) {
+                            Write-Host "⚠️ 检测到锁文件 ($lockFilePath)。这可能表示另一个 Git 进程正在运行，或者上次操作异常终止。" -ForegroundColor Yellow
+                            Write-Host "⚠️ 尝试强制删除锁文件以继续更新... (风险提示：如果存在其他活动进程，可能导致仓库损坏)" -ForegroundColor Yellow
+                            try {
+                                Remove-Item -Path $lockFilePath -Force -ErrorAction Stop
+                                Write-Host "  锁文件已删除。" -ForegroundColor Green
+                            } catch {
+                                Write-Host "❌ 无法删除锁文件 ($lockFilePath): $_" -ForegroundColor Red
+                                Write-Host "  跳过更新: $($repo.description)" -ForegroundColor Red
+                                continue # 如果无法删除锁文件，则跳过此仓库
+                            }
+                        }
+
+                        $remoteBranch = "origin/main" # Or origin/master, etc.
+                        Write-Host "  Attempting to reset local state to $remoteBranch..." # 修改日志
+                        git -C $fullPath reset --hard $remoteBranch
+                        $resetExitCode = $LASTEXITCODE # 立刻保存退出码
+                        Write-Host "  Reset command finished with exit code: $resetExitCode" # 增加结束日志
+
+                        if ($resetExitCode -ne 0) {
+                            Write-Host "❌ Reset 失败: $($repo.description)，Git 退出码: $resetExitCode" -ForegroundColor Red
+                            continue
+                        }
+
+                    }
+                } else {
+                    Write-Host "📦 克隆仓库..." -ForegroundColor Cyan
+
+                    # 直接使用带过滤条件的clone命令
+                    git clone --filter=blob:none --no-checkout $repo.url $fullPath
+                    git -C $fullPath sparse-checkout init --cone
+                    git -C $fullPath sparse-checkout set "/*" "!*.safetensors" "!*.ckpt" "!*.bin" "!*.pth" "!*.pt" "!*.onnx" "!*.pkl"
+                    git -C $fullPath checkout
+
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "❌ 克隆失败: $($repo.description)" -ForegroundColor Red
+                        continue
+                    }
+                }
+
+                if ($LASTEXITCODE -eq 0) {
+                    # 获取需要下载的大文件列表（从 .gitattributes 中提取）
+                    Write-Host "� 解析需要下载的大文件列表..." -ForegroundColor Cyan
+                    $lfsFiles = @()
+                    if (Test-Path ".gitattributes") {
+                        $lfsFiles = Get-Content ".gitattributes" | Where-Object {
+                            $_ -match '^([^\s#]+).*filter=lfs'
+                        } | ForEach-Object {
+                            $filePattern = $Matches[1]
+                            # 获取实际匹配的文件
+                            git ls-files $filePattern
+                        }
+                    }
+
+                    foreach ($file in $lfsFiles) {
+                        Write-Host "处理文件: $file"
+                        $filePath = Join-Path $fullPath $file
+
+                        # 构建文件下载 URL
+                        $file_url = "$($repo.url)/resolve/main/$file"
+                        Write-Host "� 开始下载文件: $file" -ForegroundColor Cyan
+                        Write-Host "� 下载URL: $file_url" -ForegroundColor Cyan
+
+                        $params = @{
+                            URL = $file_url
+                            DOWNLOAD_DIR = $fullPath
+                            FILENAME = $file
+                        }
+                        if($HF_TOKEN){
+                            $params.HEADER = "Authorization: Bearer $HF_TOKEN"
+                        }
+
+                        # 调用工具函数下载模型
+                        Start-FileDownloadWithAria2 @params
+                        Write-Host "-------------------"
+                    }
+
+                    Write-Host "✅ 完成: $($repo.description)" -ForegroundColor Green
+                } else {
+                    Write-Host "❌ 克隆失败: $($repo.description)" -ForegroundColor Red
+                }
+
+                Pop-Location
+            }
+            finally
+            {
+                # 确保无论如何都会返回到原始目录
+                Set-Location $previousLocation
+                # 恢复环境变量
+                if ($null -ne $oldSkipSmudge) {
+                    $env:GIT_LFS_SKIP_SMUDGE = $oldSkipSmudge
+                    Write-Host "  恢复 GIT_LFS_SKIP_SMUDGE 环境变量。" -ForegroundColor Gray
+                } else {
+                    # 如果之前不存在，则移除
+                    Remove-Item Env:\GIT_LFS_SKIP_SMUDGE -ErrorAction SilentlyContinue
+                    Write-Host "  移除临时设置的 GIT_LFS_SKIP_SMUDGE 环境变量。" -ForegroundColor Gray
+                }
+            }
+
+            Write-Host "-------------------"
+        }
+
+        Write-Host "✨ 所有任务处理完成" -ForegroundColor Green
+        if ($isInteractive) {
+            Write-Host "`n按 Enter 键退出..." -ForegroundColor Cyan
+            do {
+                $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+            } until ($key.VirtualKeyCode -eq 13) # 13 是 Enter 键的虚拟键码
+        }
+    }
+}
+
+
