@@ -41,9 +41,11 @@ download_file() {
           # 确保目录存在
           mkdir -p "$COMFY_DIR$dir"
 
-          # 设置认证头（如果 HF_TOKEN 存在）
+          # 仅当URL包含huggingface.co或hf-mirror.com且HF_TOKEN存在时才设置认证头
           local auth_header=""
-          [ -n "$HF_TOKEN" ] && auth_header="Authorization: Bearer $HF_TOKEN"
+          if [[ -n "$HF_TOKEN" && ("$url" == *"huggingface.co"* || "$url" == *"hf-mirror.com"*) ]]; then
+              auth_header="Authorization: Bearer $HF_TOKEN"
+          fi
 
           # 根据是否存在 fileName 来决定下载参数
           if [ -n "$filename" ]; then
