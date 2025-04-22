@@ -175,9 +175,20 @@ install_requirements() {
     # 将torch、torchvision、torchaudio的依赖从to_install中移除
     # 创建一个新数组来存储非 torch 相关的包
     filtered_install=()
+    # 定义需要排除的包列表
+    excluded_packages=("torch" "torchvision" "torchaudio" "numpy")
     for package in "${to_install[@]}"; do
         package_clean=$(echo "$package" | tr -d '[:space:]')
-        if [[ "$package_clean" != "torch" && "$package_clean" != "torchvision" && "$package_clean" != "torchaudio" ]]; then
+        # 精确匹配检查
+        is_excluded=false
+        for excluded in "${excluded_packages[@]}"; do
+            if [[ "$package_clean" == "$excluded" ]]; then
+                is_excluded=true
+                break
+            fi
+        done
+
+        if ! $is_excluded; then
             filtered_install+=("$package")
         else
             echo "� 移除 $package"
