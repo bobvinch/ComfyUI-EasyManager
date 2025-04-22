@@ -12,6 +12,31 @@ COMFY_DIR="$ROOT_DIR/ComfyUI"
 CONDA_PATH="/root/miniconda3"
 ENV_PATH="$ROOT_DIR/envs/comfyui"
 
+# 开启加速
+if [ -f /etc/network_turbo ]; then
+    source /etc/network_turbo
+fi
+
+## 处理选项
+while getopts ":sa" opt; do
+  case $opt in
+    s)
+      SKIP_NODE_SEARCH=true
+      ;;
+    a)
+      SKIP_ALL_INSTALLATIONS=true
+      ;;
+    \?) # 处理无效选项
+      echo "无效选项: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# 设置默认值
+: ${SKIP_NODE_SEARCH:=false}
+: ${SKIP_ALL_INSTALLATIONS:=false}
+
 
 #镜像源
 echo "🚀 设置默认镜像源为阿里云镜像..."
@@ -460,17 +485,24 @@ conda init bash
 echo "🚀 激活 Python 环境..."
 conda activate "$ENV_PATH"
 
-#安装ComfyUI环境依赖
-echo "🚀 安装ComfyUI环境依赖"
-cd "$COMFY_DIR" || exit
-install_requirements "requirements.txt" "ComfyUI"
+if [ "$SKIP_ALL_INSTALLATIONS" = false ];then
+    #安装ComfyUI环境依赖
+    echo "🚀 安装ComfyUI环境依赖"
+    cd "$COMFY_DIR" || exit
+    install_requirements "requirements.txt" "ComfyUI"
+    # 安装节点配置文件中的节点
+    InitializeCustomNodeRepos
+else
+    echo "跳过安装ComfyUI环境依赖"
+fi
 
-# 安装节点配置文件中的节点
-InitializeCustomNodeRepos
 
 # 安装用户自定义的节点依赖
-install_custom_node_requirements
-
+if [ "$SKIP_NODE_SEARCH" = false ]; then
+    install_custom_node_requirements
+else
+    echo "跳过搜索自定义节点依赖"
+fi
 # 检查并修复依赖
 check_dependencies_conflicts
 
