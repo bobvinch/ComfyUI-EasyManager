@@ -18,13 +18,16 @@ if [ -f /etc/network_turbo ]; then
 fi
 
 ## 处理选项
-while getopts ":sa" opt; do
+while getopts ":sae" opt; do  # 在选项字符串中增加i
   case $opt in
     s)
       SKIP_NODE_SEARCH=true
       ;;
     a)
       SKIP_ALL_INSTALLATIONS=true
+      ;;
+    e)  # 新增i选项处理
+      SKIP_EXIST=true
       ;;
     \?) # 处理无效选项
       echo "无效选项: -$OPTARG" >&2
@@ -36,6 +39,7 @@ done
 # 设置默认值
 : ${SKIP_NODE_SEARCH:=false}
 : ${SKIP_ALL_INSTALLATIONS:=false}
+: ${SKIP_EXIST:=false}  # 新增SKIP_EXIST默认值
 
 
 #镜像源
@@ -459,28 +463,30 @@ while IFS= read -r repo; do
     # 获取仓库名称（去除.git后缀）
     repo_name=$(basename "$repo" .git)
 
-    echo "🚀 处理仓库: $repo_name"
-
     # 检查仓库是否已存在
     if [ -d "$repo_name" ]; then
         echo "⚠️ 仓库已存在，跳过克隆步骤"
         cd "$repo_name" || exit
+        is_new_clone=false
     else
         if git clone "$repo"; then
             echo "✅ 克隆完成"
             cd "$repo_name" || exit
+            is_new_clone=true
         else
             echo "❌ 克隆失败: $repo_name"
             continue
         fi
     fi
 
-    if [ -f "requirements.txt" ]; then
+    # 只有当三个条件都满足时才安装依赖
+    if [ "$is_new_clone" = true ] && [ "$SKIP_EXIST" = false ] && [ -f "requirements.txt" ]; then
         install_requirements "requirements.txt" "插件"
+    elif [ -f "requirements.txt" ]; then
+        echo "ℹ️ 节点已存在，跳过已经安装的节点环境的依赖安装"
     else
         echo "⚠️ 未找到 requirements.txt 文件"
     fi
-
     cd ..
     echo "-------------------"
   done <<< "$REPOS_URLS"

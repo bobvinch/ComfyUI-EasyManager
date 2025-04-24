@@ -32,7 +32,7 @@ download_file() {
 
 
       # 使用 yq 将 TOML 转换为 JSON 格式并处理
-      yq -o=json eval "$MODELS_TOML" | jq -r '.models[] | "\(.id)|\(.url)|\(.dir)|\(.fileName // "")"' | while IFS='|' read -r id url dir filename; do
+      yq -o=json eval "$MODELS_TOML" | jq -r '.models[] | "\(.id)|\(.source // "")|\(.url)|\(.dir)|\(.fileName // "")|\(.description // "")"' | while IFS='|' read -r id source url dir filename description; do
           echo "🎯 开始处理任务: $id"
           echo "📥 下载链接: $url"
           echo "📂 下载目录: $COMFY_DIR$dir"
@@ -47,29 +47,63 @@ download_file() {
               auth_header="Authorization: Bearer $HF_TOKEN"
           fi
 
-          # 根据是否存在 fileName 来决定下载参数
-          if [ -n "$filename" ]; then
-              echo "📄 使用指定文件名: $filename"
-              if [ -n "$auth_header" ]; then
-                  download_file_by_aria2c "$url" "$filename" "$auth_header" "$COMFY_DIR$dir"
-              else
-                  download_file_by_aria2c "$url" "$filename" "" "$COMFY_DIR$dir"
-              fi
+          # source失败baiduNetdisk的情况下使用百度网盘下载
+          if [[ -n "$source" && "$source" == "baiduNetdisk" ]]; then
+              echo "🚀 开始下载百度网盘文件"
+              download_from_baidupcs "$url" "$dir"
           else
-              if [ -n "$auth_header" ]; then
-                  download_file_by_aria2c "$url" "$auth_header" "$COMFY_DIR$dir"
-              else
-                  download_file_by_aria2c "$url" "" "$COMFY_DIR$dir"
-              fi
+                       # aria2c 下载，根据是否存在 fileName 来决定下载参数
+                       if [ -n "$filename" ]; then
+                           echo "📄 使用指定文件名: $filename"
+                           if [ -n "$auth_header" ]; then
+                               download_file_by_aria2c "$url" "$filename" "$auth_header" "$COMFY_DIR$dir"
+                           else
+                               download_file_by_aria2c "$url" "$filename" "" "$COMFY_DIR$dir"
+                           fi
+                       else
+                           if [ -n "$auth_header" ]; then
+                               download_file_by_aria2c "$url" "$auth_header" "$COMFY_DIR$dir"
+                           else
+                               download_file_by_aria2c "$url" "" "$COMFY_DIR$dir"
+                           fi
+                       fi
           fi
+
+
+
+
       done
       echo "✨ 所有模型下载任务处理完成"
   fi
 }
 
+
+
+while getopts ":p" opt; do
+  case $opt in
+    p)  # 禁用代理
+      ENABLE_PROXY=false
+      ;;
+    \?)
+      echo "无效选项: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# 设置代理默认值为启用
+: "${ENABLE_PROXY:=true}"
+
 # autodl 开启学术加速
-if [ -f /etc/network_turbo ]; then
+if [ "$ENABLE_PROXY" = true ]; then
+  if [ -f /etc/network_turbo ]; then
     source /etc/network_turbo
+  fi
+else
+  if [ -f /etc/network_turbo ]; then
+    unset http_proxy
+    unset https_proxy
+  fi
 fi
 
 download_file

@@ -225,9 +225,103 @@ check_and_install_dependency() {
 }
 
 
+
+#!/bin/bash
+
+# 检查并安装BaiduPCS-Go
+install_baidupcs() {
+    if ! command -v BaiduPCS-Go &> /dev/null; then
+        echo "BaiduPCS-Go未安装，正在安装..."
+
+        # 创建临时目录
+        local temp_dir=$(mktemp -d)
+        local download_url="https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v3.9.7/BaiduPCS-Go-v3.9.7-linux-amd64.zip"
+        local zip_file="${temp_dir}/BaiduPCS-Go.zip"
+
+        # 下载并解压
+        wget -O "$zip_file" "$download_url"
+        unzip "$zip_file" -d "$temp_dir"
+
+        # 安装到/usr/local/bin
+        sudo mv "${temp_dir}/BaiduPCS-Go" /usr/local/bin/
+        sudo chmod +x /usr/local/bin/BaiduPCS-Go
+
+        # 清理临时文件
+        rm -rf "$temp_dir"
+        echo "BaiduPCS-Go安装完成"
+    fi
+}
+
+#!/bin/bash
+
+# 初始化检查登录状态
+check_login() {
+    if ! BaiduPCS-Go who | grep -q "uid"; then
+        echo "未检测到登录状态，正在尝试从config.toml读取BDUSS登录..."
+        config_file="$ROOT_DIR/config.toml"
+
+        # 检查config.toml文件是否存在
+        if [[ ! -f $config_file ]]; then
+            echo "错误: 未找到config.toml文件"
+            return 1
+        fi
+
+        bduss=$(yq -r '.authorizations[0].baidu_netdisk_bduss // empty' "$config_file")
+
+        if [[ -z "$bduss" ]]; then
+            echo "错误: 在config.toml中未找到有效的baidu_netdisk_bduss"
+            return 1
+        fi
+
+        # 使用BDUSS登录
+        BaiduPCS-Go login -bduss="$bduss"
+
+        if [[ $? -ne 0 ]]; then
+            echo "登录失败"
+            return 1
+        fi
+        echo "登录成功"
+    fi
+}
+
+
+# 百度PCS文件下载函数
+download_from_baidupcs() {
+    local remote_path="$1"
+    local local_path="$2"
+
+    # 检查参数
+    if [[ -z "$remote_path" || -z "$local_path" ]]; then
+        echo "用法: download_from_baidupcs <远程路径> <本地路径>"
+        return 1
+    fi
+
+    # 确保已安装
+    install_baidupcs
+
+    # 检查并登录
+    check_login || return 1
+
+    echo "正在下载: ${remote_path} 到 ${local_path}"
+    BaiduPCS-Go download "$remote_path" --saveto "${COMFY_DIR}${local_path}"
+
+    if [[ $? -eq 0 ]]; then
+        echo "下载完成: ${local_path}"
+    else
+        echo "下载失败"
+        return 1
+    fi
+}
+
+# 使用示例:
+# download_from_baidupcs "/我的文件/test.txt" "/home/user/downloads/test.txt"
+
+
+
 export  tools_get_hf_token
 export  InitializePythonEnv
 export  clone_ComfyUI_repos
 export  download_file_by_aria2c
 export  tools_init_aria2c
 export  check_and_install_dependency
+export  download_from_baidupcs

@@ -1,6 +1,7 @@
 [[authorizations]]
 huggingface_token = ""
-
+# bduss获取方式参考：https://blog.csdn.net/ykiwmy/article/details/103730962
+baidu_netdisk_bduss= ""
 
 [[resources]]
 #pip_mirror = "https://pypi.tuna.tsinghua.edu.cn/simple"
@@ -9,3 +10,5 @@ pip_mirror = "https://mirrors.aliyun.com/pypi/simple"
 [[packages]]
 sympy="sympy == 1.13.1"
 numpy="numpy==1.26.4"
+# 支持如下whl 格式
+#nunchaku-wheel="https://github.com/mit-han-lab/nunchaku/releases/download/v0.2.0/nunchaku-0.2.0+torch2.5-cp310-cp310-linux_x86_64.whl"

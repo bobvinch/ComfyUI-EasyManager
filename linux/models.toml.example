@@ -130,3 +130,11 @@ id = "sam-vit-large"
 url = "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swint_ogc.pth"
 dir = "/models/grounding-dino"
 description = "GroundingDINO-swint-ogc"
+
+# 百度网盘下载示例，url为百度网盘的相对路径
+[[models]]
+id = "dreamshaper_8"
+source = "baiduNetdisk"
+url = "/models/Stable-diffusion/dreamshaper_8.safetensors"
+dir = "/models/checkpoints"
+description = "dreamshaper_8"
