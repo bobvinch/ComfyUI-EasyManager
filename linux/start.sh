@@ -3,6 +3,7 @@
 set -e  # 发生错误时终止脚本执行
 
 PORT="8188"
+CONDA_PATH="/root/miniconda3"
 
 # autodl 开启学术加速
 if [ -f /etc/network_turbo ]; then
@@ -52,7 +53,7 @@ fi
 
 echo "🚀 激活 Python 环境..."
 conda init bash
-source ~/.bashrc
+source "$CONDA_PATH"/etc/profile.d/conda.sh
 conda activate "$ENV_PATH"
 
 #启动ComfyUI
