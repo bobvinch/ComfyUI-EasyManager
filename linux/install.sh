@@ -73,6 +73,7 @@ bash ./install_repos_hf.sh
 
 #启动ComfyUI
 cd "$ROOT_DIR"
+chmod +x start.sh
 echo "🚀 启动ComfyUI"
 bash ./start.sh "$PORT"
 

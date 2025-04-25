@@ -242,13 +242,22 @@ install_baidupcs() {
         wget -O "$zip_file" "$download_url"
         unzip "$zip_file" -d "$temp_dir"
 
-        # 安装到/usr/local/bin
-        sudo mv "${temp_dir}/BaiduPCS-Go" /usr/local/bin/
-        sudo chmod +x /usr/local/bin/BaiduPCS-Go
+        # 修正：使用正确的解压后的路径
+        mv "${temp_dir}/BaiduPCS-Go-v3.9.7-linux-amd64/BaiduPCS-Go" /usr/local/bin/
+        chmod +x /usr/local/bin/BaiduPCS-Go
 
         # 清理临时文件
         rm -rf "$temp_dir"
-        echo "BaiduPCS-Go安装完成"
+
+        # 验证安装
+        if command -v BaiduPCS-Go &> /dev/null; then
+            echo "BaiduPCS-Go安装完成"
+        else
+            echo "BaiduPCS-Go安装失败"
+            return 1
+        fi
+    else
+        echo "BaiduPCS-Go已安装"
     fi
 }
 
@@ -256,7 +265,8 @@ install_baidupcs() {
 
 # 初始化检查登录状态
 check_login() {
-    if ! BaiduPCS-Go who | grep -q "uid"; then
+      local user_info=$(BaiduPCS-Go who)
+      if echo "$user_info" | grep -q "uid: 0,"; then
         echo "未检测到登录状态，正在尝试从config.toml读取BDUSS登录..."
         config_file="$ROOT_DIR/config.toml"
 
@@ -266,7 +276,8 @@ check_login() {
             return 1
         fi
 
-        bduss=$(yq -r '.authorizations[0].baidu_netdisk_bduss // empty' "$config_file")
+        # 修改后：
+        bduss=$(yq eval '.authorizations[0].baidu_netdisk_bduss' "$config_file" 2>/dev/null || echo "")
 
         if [[ -z "$bduss" ]]; then
             echo "错误: 在config.toml中未找到有效的baidu_netdisk_bduss"
@@ -281,7 +292,10 @@ check_login() {
             return 1
         fi
         echo "登录成功"
-    fi
+      else
+          echo "已登录百度网盘"
+          return 0
+      fi
 }
 
 

@@ -278,9 +278,6 @@ check_forced_dependencies() {
 
     echo "🔍 检查强制指定的依赖..."
 
-
-
-
     # 使用 yq 和 jq 解析 TOML 文件中的包信息，优化包名和版本的处理
     local packages_info=$(yq -o=json eval "$config_file" | jq -r '.packages[] | to_entries[] | select(.value != null) | if .value == "" then .key else .value end')
 
@@ -480,10 +477,16 @@ while IFS= read -r repo; do
     fi
 
     # 只有当三个条件都满足时才安装依赖
-    if [ "$is_new_clone" = true ] && [ "$SKIP_EXIST" = false ] && [ -f "requirements.txt" ]; then
+    if [ "$is_new_clone" = true ] && [ -f "requirements.txt" ]; then
+      # 新仓库安装依赖
         install_requirements "requirements.txt" "插件"
-    elif [ -f "requirements.txt" ]; then
+    elif [ "$is_new_clone" = false ] && [ -f "requirements.txt" ]; then
+      #老仓库并且依赖存在
+      if [ "$SKIP_EXIST" = false ]; then
+        install_requirements "requirements.txt" "插件"
+      else
         echo "ℹ️ 节点已存在，跳过已经安装的节点环境的依赖安装"
+      fi
     else
         echo "⚠️ 未找到 requirements.txt 文件"
     fi

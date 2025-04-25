@@ -127,16 +127,33 @@ else
 
                 # 构建文件下载 URL
                 file_url="${url}/resolve/main/${file}"
+                save_path="$fullPath"
+                # 处理文件路径包含目录的情况
+                if [[ "$file" == *"/"* ]]; then
+                    # 包含目录的情况
+                    file_dir="${file%/*}"
+                    file_name="${file##*/}"
+                else
+                    # 没有目录的情况
+                    file_dir=""
+                    file_name="$file"
+                fi
+
+                # 构建完整的保存路径
+                if [ -n "$file_dir" ]; then
+                    save_path="${fullPath}/${file_dir}"
+                fi
+
                 echo "📥 开始下载文件: $file"
                 echo "🔗 下载URL: $file_url"
-                echo "📂 保存路径: $fullPath"
+                echo "📂 保存路径: $save_path"
                 # 设置认证头（如果 HF_TOKEN 存在）
                 local auth_header=""
                 [ -n "$HF_TOKEN" ] && auth_header="Authorization: Bearer $HF_TOKEN"
                 if [ -n "$auth_header" ]; then
-                     download_file_by_aria2c "$file_url" "$auth_header" "$fullPath"
+                     download_file_by_aria2c "$file_url" "$auth_header" "$save_path"
                 else
-                     download_file_by_aria2c "$file_url" "" "$fullPath"
+                     download_file_by_aria2c "$file_url" "" "$save_path"
                 fi
 
 #                if "$ROOT_DIR"/download.sh "$file_url" "Authorization: Bearer $HF_TOKEN" "$fullPath"; then
