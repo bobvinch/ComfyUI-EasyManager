@@ -52,6 +52,7 @@ fi
 
 echo "🚀 激活 Python 环境..."
 conda init bash
+source ~/.bashrc
 conda activate "$ENV_PATH"
 
 #启动ComfyUI
