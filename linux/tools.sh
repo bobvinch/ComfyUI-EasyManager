@@ -287,6 +287,9 @@ check_login() {
         # 使用BDUSS登录
         BaiduPCS-Go login -bduss="$bduss"
 
+        # 设置下载最大并发量为 15
+        BaiduPCS-Go config set -max_parallel 15
+
         if [[ $? -ne 0 ]]; then
             echo "登录失败"
             return 1
