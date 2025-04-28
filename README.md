@@ -53,8 +53,8 @@ git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
 ```bash
 # 克隆脚本
 git clone https://github.com/bobvinch/ComfyUI-EasyManager.git
-# 一键启动
-cd ./ComfyUI-EasyManager/linux && chmod +x install.sh && ./install.sh
+# 将脚本复制到ComfyUI同级目录 或者新建一个空白目录
+chmod +x install.sh && ./install.sh
 
 ```
 

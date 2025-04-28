@@ -67,12 +67,18 @@ else
     git sparse-checkout set "!*.safetensors" "!*.ckpt" "!*.bin" "!*.pth" "!*.pt" "!*.onnx" "!*.pkl"
 
     # 遍历并处理每个下载任务
-    yq -o=json eval "$REPOS_FILE" | jq -r '.repos[] | "\(.url)|\(.local_path)|\(.description)"' | while IFS='|' read -r url local_path description; do
+    yq -o=json eval "$REPOS_FILE" | jq -r '.repos[] | "\(.url)|\(.local_path)|\(.rename_repos)|\(.description)"' | while IFS='|' read -r url local_path rename_repos description; do
         echo "🎯 开始处理: $description"
         echo "📥 仓库地址: $url"
         echo "📂 本地路径: $local_path"
+        echo "📝 仓库描述: $description"
+        echo "🚀 重新仓库名: $rename_repos"
         # 从 URL 中提取仓库名称
         repo_name=$(basename "$url")
+        if [ "$rename_repos" != "null" ]; then
+            echo "📝 重命名仓库: $rename_repos"
+            repo_name="$rename_repos"
+        fi
 
         fullPath="$COMFY_DIR$local_path/$repo_name"
 
