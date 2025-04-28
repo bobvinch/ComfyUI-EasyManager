@@ -101,4 +101,4 @@ git pull
 然后再将所有的ps1文件复制到ComfyUI的同级目录直接替换原有的脚本文件，后缀为.example的文件可以不需要复制
 
 ### 提交贡献及问题反馈交流
-欢迎大家提issue，或者直接提PR，或者加群交流，备注：Github ComfyUI工具：[问题反馈及联系加群](https://work.weixin.qq.com/kfid/kfc1bf83fcf005d3715)
+如果你有什么难以安装的节点，欢迎大家提issue，或者直接提PR，一起完善脚本，帮助更多人轻松玩转ComfyUI的强大功能，或者加群交流，备注：Github ComfyUI工具：[问题反馈及联系加群](https://work.weixin.qq.com/kfid/kfc1bf83fcf005d3715)

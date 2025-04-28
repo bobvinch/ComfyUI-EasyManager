@@ -39,11 +39,13 @@ install_pytorch() {
     local cuda_version=$1
     if [ "$cuda_version" = "none" ]; then
         echo "未检测到 CUDA，将安装 CPU 版本的 PyTorch"
-        conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 cpuonly -p "$ENV_PATH" -c pytorch -y
+        conda install pytorch torchvision torchaudio cpuonly -p "$ENV_PATH" -c pytorch -y
     else
         echo "检测到 CUDA 版本: $cuda_version，将自动安装对应版本的 PyTorch"
-        conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -p "$ENV_PATH" -c pytorch -c nvidia -y
+        conda install pytorch torchvision torchaudio -p "$ENV_PATH" -c pytorch -c nvidia -y
     fi
+    # 使用 conda 安装 OpenMP 构建环境
+    conda install -c conda-forge compilers openmp
 }
 
 
