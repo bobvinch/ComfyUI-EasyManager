@@ -4,6 +4,8 @@ set -e  # 发生错误时终止脚本执行
 
 PORT="8188"
 CONDA_PATH="/root/miniconda3"
+# 获取脚本所在目录
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # autodl 开启学术加速
 if [ -f /etc/network_turbo ]; then
@@ -36,10 +38,9 @@ while getopts ":p:" opt; do
 done
 
 # 导出工具函数
-source ./tools.sh
+source "$ROOT_DIR/tools.sh"
 
-# 获取脚本所在目录
-ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 echo "脚本所在目录是: $ROOT_DIR"
 COMFY_DIR="$ROOT_DIR/ComfyUI"
 #创建Python环境，安装依赖
