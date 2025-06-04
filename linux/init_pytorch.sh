@@ -45,7 +45,7 @@ install_pytorch() {
         conda install pytorch torchvision torchaudio -p "$ENV_PATH" -c pytorch -c nvidia -y
     fi
     # 使用 conda 安装 OpenMP 构建环境
-    conda install -c conda-forge compilers openmp
+    conda install -c conda-forge compilers openmp -y
 }
 
 
