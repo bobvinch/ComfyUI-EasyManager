@@ -26,10 +26,12 @@ function InitializePythonEnv() {
 
     # 检查环境是否存在
     if ! conda env list | grep -q "$ENV_PATH"; then
-        echo "🚀 创建新的 Python 环境. 3.10.."
+        echo "🚀 创建新的 Python 环境. 3.12.."
         echo "📋 当前的 channels 配置："
         conda config --show channels
-        conda create -p "$ENV_PATH" python=3.10 -y --override-channels -c defaults
+        conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+        conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+        conda create -p "$ENV_PATH" python=3.12 -y --override-channels -c defaults
         echo "✅ Python 环境创建完成"
     else
         echo "✅ Python 环境已存在"
